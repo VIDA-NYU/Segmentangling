@@ -30,7 +30,7 @@ public:
 
     void computeTree(ScalarFunction* data, TreeType type);
     void computeJoinTree();
-    void output(TreeType type);
+    void output(QString fileName, TreeType tree);
 
 protected:
     void setupData();

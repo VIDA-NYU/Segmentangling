@@ -20,6 +20,7 @@ public:
     int getVertexCount();
     QVector<int64_t> getStar(int64_t v);
     bool lessThan(int64_t v1, int64_t v2);
+    unsigned char getFunctionValue(int64_t v);
 
 public:
     void loadGrid(QString fileName);

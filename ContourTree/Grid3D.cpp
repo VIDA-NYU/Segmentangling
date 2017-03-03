@@ -50,6 +50,10 @@ bool Grid3D::lessThan(int64_t v1, int64_t v2) {
     return false;
 }
 
+unsigned char Grid3D::getFunctionValue(int64_t v) {
+    return this->fnVals[v];
+}
+
 void Grid3D::loadGrid(QString fileName) {
     std::ifstream ip(fileName.toStdString());
     this->fnVals.resize(nv);

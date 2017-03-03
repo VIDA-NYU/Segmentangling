@@ -34,18 +34,18 @@ void testGrid() {
     qDebug() << "in test grid";
     std::chrono::time_point<std::chrono::system_clock> start, end;
     start = std::chrono::system_clock::now();
-    Grid3D grid(510,512,3685);
+    Grid3D grid(256,257,471);
     end = std::chrono::system_clock::now();
     qDebug() << "Test 1 - Elapsed time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() << "ms\n";
 
     start = std::chrono::system_clock::now();
-    grid.loadGrid("/home/harishd/Desktop/Projects/Fish/data/Fish_512/Fish_512.raw");
+    grid.loadGrid("/home/harishd/Desktop/Projects/Fish/data/Fish_256/Fish_256.raw");
     MergeTree ct;
     ct.computeTree(&grid,MergeTree::JoinTree);
     end = std::chrono::system_clock::now();
     qDebug() << "Test 2 - Elapsed time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() << "ms\n";
 
-    ct.output(MergeTree::JoinTree);
+    ct.output("/home/harishd/Desktop/Projects/Fish/data/Fish_256/Fish_256", MergeTree::JoinTree);
 }
 
 int main(int argc, char *argv[])

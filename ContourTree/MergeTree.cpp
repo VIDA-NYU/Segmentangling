@@ -3,6 +3,9 @@
 #include <chrono>
 #include <QDebug>
 #include <parallel/algorithm>
+#include <QFile>
+#include <QTextStream>
+#include <fstream>
 
 MergeTree::MergeTree()
 {
@@ -86,16 +89,17 @@ void MergeTree::computeJoinTree() {
     newRoot = in;
 }
 
-void MergeTree::output(MergeTree::TreeType type)
+void MergeTree::output(QString fileName, MergeTree::TreeType tree)
 {
-    std::vector<int64_t> arcMap;
+    // assume size of contour tree fits within 4 bytes
+    std::vector<uint32_t> arcMap;
     if(newVertex) {
         arcMap.resize(noVertices + 1,-1);
     } else {
         arcMap .resize(noVertices,-1);
     }
-    int noArcs = 0;
-    int noNodes = 0;
+    uint32_t noArcs = 0;
+    uint32_t noNodes = 0;
     for(int64_t i = 0;i < noVertices;i ++) {
         if(criticalPts[i] != REGULAR) {
             noNodes ++;
@@ -105,8 +109,136 @@ void MergeTree::output(MergeTree::TreeType type)
         noNodes ++;
     }
     noArcs = noNodes - 1;
-    // Still TODO
-    qDebug() << "Size of contour tree:" << noNodes << noArcs;
+
+    // write meta data
+    qDebug() << "Writing meta data";
+    {
+        QFile pr(fileName + ".rg.dat");
+        if(!pr.open(QFile::WriteOnly | QIODevice::Text)) {
+            qDebug() << "could not write to file" << fileName + ".rg.dat";
+        }
+        QTextStream text(&pr);
+        text << noNodes << "\n";
+        text << noArcs << "\n";
+        pr.close();
+    }
+
+    qDebug() << ("Creating required memory!");
+    std::vector<int64_t> nodeids(noNodes);
+    std::vector<unsigned char> nodefns(noNodes);
+    std::vector<char> nodeTypes(noNodes);
+    std::vector<int64_t> arcs(noArcs * 2);
+
+    std::vector<int64_t> arcFrom(noNodes);
+    std::vector<int64_t> arcTo(noNodes);
+
+    qDebug() << "Generating tree";
+    int nct = 0;
+    if(newVertex) {
+        if(tree == JoinTree){
+            nodeids[nct] = noVertices;
+            nodefns[nct] = 0;
+            nodeTypes[nct] = MINIMUM;
+            nct ++;
+        }
+    }
+    for(int i = 0;i < noVertices;i ++) {
+        if(criticalPts[sv[i]] != REGULAR) {
+            nodeids[nct] = sv[i];
+            nodefns[nct] = data->getFunctionValue(sv[i]);
+            nodeTypes[nct] = criticalPts[sv[i]];
+            nct ++;
+        }
+    }
+    if(newVertex) {
+        if(tree != JoinTree){
+            nodeids[nct] = noVertices;
+            nodefns[nct] = 255;
+            nodeTypes[nct] = MAXIMUM;
+            nct ++;
+        }
+    }
+
+    if(tree == JoinTree) {
+        uint32_t arcNo = 0;
+        for(int64_t i = 0;i < noVertices;i ++) {
+            if((criticalPts[i] == MAXIMUM || criticalPts[i] == SADDLE) && i != sv[0]) {
+                arcMap[i] = arcNo;
+
+                int64_t to = i;
+                int64_t from = prev[to];
+
+                while(criticalPts[from] == REGULAR) {
+                    arcMap[from] = arcNo;
+                    from = prev[from];
+                }
+                arcMap[from] = arcNo;
+
+                arcs[arcNo * 2 + 0] = from;
+                arcs[arcNo * 2 + 1] = to;
+                if(criticalPts[i] == SADDLE) {
+                    arcFrom[arcNo] = from;
+                    arcTo[arcNo] = to;
+                }
+                arcNo ++;
+            }
+        }
+        if(newVertex) {
+            int to = sv[0];
+            int from = noVertices;
+            arcs[arcNo * 2 + 0] = from;
+            arcs[arcNo * 2 + 1] = to;
+            arcMap[to] = arcMap[from] = arcNo ++;
+        }
+        assert(arcNo == noArcs);
+    } else {
+        uint32_t arcNo = 0;
+        for(int64_t i = 0;i < noVertices;i ++) {
+            if((criticalPts[i] == MINIMUM || criticalPts[i] == SADDLE) && i != sv[sv.size() - 1]) {
+                arcMap[i] = arcNo;
+
+                int64_t from = i;
+                int64_t to = next[from];
+
+                while(criticalPts[to] == REGULAR) {
+                    arcMap[to] = arcNo;
+                    to = next[to];
+                }
+                arcMap[to] = arcNo;
+
+                arcs[arcNo * 2 + 0] = from;
+                arcs[arcNo * 2 + 1] = to;
+                if(criticalPts[i] == SADDLE) {
+                    arcFrom[arcNo] = from;
+                    arcTo[arcNo] = to;
+                }
+                arcNo ++;
+            }
+        }
+        if(newVertex) {
+            int from = sv[sv.size() - 1];
+            int to = noVertices;
+            arcs[arcNo * 2 + 0] = from;
+            arcs[arcNo * 2 + 1] = to;
+            arcMap[to] = arcMap[from] = arcNo ++;
+        }
+        assert(arcNo == noArcs);
+    }
+
+    qDebug() << "writing tree output";
+    QString rgFile = fileName + ".rg.bin";
+    std::ofstream of(rgFile.toStdString(),std::ios::binary);
+    of.write((char *)nodeids.data(),nodeids.size() * sizeof(int64_t));
+    of.write((char *)nodefns.data(),nodeids.size());
+    of.write((char *)nodeTypes.data(),nodeids.size());
+    of.write((char *)arcs.data(),arcs.size() * sizeof(int64_t));
+    of.close();
+
+    qDebug() << "writing partition";
+    QString rawFile = fileName + ".part.raw";
+    of.open(rawFile.toStdString(), std::ios::binary);
+    of.write((char *)arcMap.data(), arcMap.size() * sizeof(uint32_t));
+    of.close();
 }
 
 void MergeTree::processVertex(int64_t v) {
