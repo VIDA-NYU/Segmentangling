@@ -10,13 +10,21 @@ TEMPLATE = app
 
 SOURCES += main.cpp \
     MergeTree.cpp \
-    Grid3D.cpp
+    Grid3D.cpp \
+    SimplifyCT.cpp \
+    ContourTreeData.cpp \
+    Persistence.cpp
 
 HEADERS += \
     DisjointSets.hpp \
     MergeTree.hpp \
     ScalarFunction.hpp \
-    Grid3D.hpp
+    Grid3D.hpp \
+    SimplifyCT.hpp \
+    ContourTreeData.hpp \
+    constants.h \
+    SimFunction.hpp \
+    Persistence.hpp
 
 # Unix configuration
 unix:!macx{

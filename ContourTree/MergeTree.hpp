@@ -1,6 +1,7 @@
 #ifndef MERGETREE_H
 #define MERGETREE_H
 
+#include <constants.h>
 #include "ScalarFunction.hpp"
 #include <vector>
 #include <DisjointSets.hpp>
@@ -9,9 +10,6 @@
 class MergeTree
 {
 public:
-    // Following the nomenclature of original Carr paper.
-    // JoinTree -> maxima and SplitTree -> minima
-    enum TreeType {JoinTree, SplitTree, ContourTree};
     struct Compare {
         Compare(ScalarFunction *data):data(data) {}
         bool operator () (int64_t v1, int64_t v2) {
@@ -20,10 +18,6 @@ public:
 
         ScalarFunction *data;
     };
-    const char REGULAR = 0;
-    const char MINIMUM = 1;
-    const char MAXIMUM = 2;
-    const char SADDLE = 4;
 
 public:
     MergeTree();
@@ -52,6 +46,9 @@ public:
     int64_t newRoot;
 
     QSet<int64_t> set;
+
+private:
+    QVector<int64_t> star;
 };
 
 #endif // MERGETREE_H

@@ -19,14 +19,14 @@ int Grid3D::getVertexCount() {
     return nv;
 }
 
-QVector<int64_t> Grid3D::getStar(int64_t v) {
-    QVector<int64_t> star;
-
+int Grid3D::getStar(int64_t v, QVector<int64_t> &star) {
+    star.clear();
     int z = v / (dimx * dimy);
     int rem = v % (dimx * dimy);
     int y = rem / dimx;
     int x = rem % dimx;
 
+    int ct = 0;
     for(int i = 0;i < 14;i ++) {
         int _x = x + starin[i][0];
         int _y = y + starin[i][1];
@@ -36,9 +36,9 @@ QVector<int64_t> Grid3D::getStar(int64_t v) {
            _z < 0 || _z >= dimz) {
             continue;
         }
-        star << (v + this->star[i]);
+        star[ct ++] = (v + this->star[i]);
     }
-    return star;
+    return ct;
 }
 
 bool Grid3D::lessThan(int64_t v1, int64_t v2) {

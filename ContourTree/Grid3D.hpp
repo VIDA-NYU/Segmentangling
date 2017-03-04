@@ -18,7 +18,7 @@ public:
 public:
     int getMaxDegree();
     int getVertexCount();
-    QVector<int64_t> getStar(int64_t v);
+    int getStar(int64_t v, QVector<int64_t> &star);
     bool lessThan(int64_t v1, int64_t v2);
     unsigned char getFunctionValue(int64_t v);
 

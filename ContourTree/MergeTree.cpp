@@ -15,7 +15,7 @@ MergeTree::MergeTree()
     newRoot = 0;
 }
 
-void MergeTree::computeTree(ScalarFunction* data, MergeTree::TreeType type) {
+void MergeTree::computeTree(ScalarFunction* data, TreeType type) {
     this->data = data;
     std::chrono::time_point<std::chrono::system_clock> ct, en;
     ct = std::chrono::system_clock::now();
@@ -50,6 +50,8 @@ void MergeTree::computeTree(ScalarFunction* data, MergeTree::TreeType type) {
 void MergeTree::setupData() {
     qDebug() << "setting up data";
     maxStar = data->getMaxDegree();
+    star.resize(maxStar);
+
     noVertices = data->getVertexCount();
     newVertex = false;
 
@@ -96,7 +98,7 @@ void MergeTree::computeJoinTree() {
     newRoot = in;
 }
 
-void MergeTree::output(QString fileName, MergeTree::TreeType tree)
+void MergeTree::output(QString fileName, TreeType tree)
 {
     // assume size of contour tree fits within 4 bytes
     std::vector<uint32_t> arcMap;
@@ -249,12 +251,12 @@ void MergeTree::output(QString fileName, MergeTree::TreeType tree)
 }
 
 void MergeTree::processVertex(int64_t v) {
-    QVector<int64_t> star = data->getStar(v);
-    if(star.length() == 0) {
+    int starct = data->getStar(v, star);
+    if(starct == 0) {
         return;
     }
     set.clear();
-    for(int x = 0;x < star.length(); x++) {
+    for(int x = 0;x < starct; x++) {
         int64_t tin = star[x];
         if(data->lessThan(v,tin)) {
             // upperLink
