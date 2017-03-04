@@ -2,10 +2,13 @@
 
 #include <chrono>
 #include <QDebug>
-#include <parallel/algorithm>
 #include <QFile>
 #include <QTextStream>
 #include <fstream>
+
+#if !defined (WIN32)
+#include <parallel/algorithm>
+#endif
 
 MergeTree::MergeTree()
 {
@@ -63,7 +66,11 @@ void MergeTree::setupData() {
 
 void MergeTree::orderVertices() {
     qDebug() << "ordering vertices";
+#if defined (WIN32)
+    std::sort(sv.begin(),sv.end(),Compare(data));
+#else
     __gnu_parallel::sort(sv.begin(),sv.end(),Compare(data));
+#endif
 }
 
 void MergeTree::computeJoinTree() {
