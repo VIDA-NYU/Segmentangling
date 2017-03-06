@@ -9,11 +9,11 @@ bool BranchCompare::operator() (uint32_t v1, uint32_t v2) {
 
 SimplifyCT::SimplifyCT() {
     queue = std::priority_queue<uint32_t,std::vector<uint32_t>,BranchCompare>(BranchCompare(this));
+    order.clear();
 }
 
 void SimplifyCT::setInput(ContourTreeData *data) {
     this->data = data;
-    order.resize(data->noArcs/2 + 5);
 }
 
 void SimplifyCT::addToQueue(uint32_t ano) {
@@ -59,17 +59,19 @@ void SimplifyCT::initSimplification(SimFunction* f) {
     }
 
     fn.resize(branches.size());
-    removed.resize(branches.size());
-    invalid.resize(branches.size());;
-    inq.resize(branches.size());
+    removed.resize(branches.size(),false);
+    invalid.resize(branches.size(),false);
+    inq.resize(branches.size(), false);
 
     vArray.resize(nodes.size());
 
     simFn = f;
-    simFn->init(fn, branches);
+    if(f != NULL) {
+        simFn->init(fn, branches);
 
-    for(uint32_t i = 0;i < branches.size();i ++) {
-        addToQueue(i);
+        for(uint32_t i = 0;i < branches.size();i ++) {
+            addToQueue(i);
+        }
     }
 }
 
@@ -122,7 +124,8 @@ void SimplifyCT::removeArc(uint32_t ano) {
     if(nodes[mergedVertex].prev.size() == 1 && nodes[mergedVertex].next.size() == 1) {
         mergeVertex(mergedVertex);
     }
-    simFn->branchRemoved(branches, ano, invalid);
+    if(simFn != NULL)
+        simFn->branchRemoved(branches, ano, invalid);
 }
 
 void SimplifyCT::mergeVertex(uint32_t v) {
@@ -154,7 +157,7 @@ void SimplifyCT::mergeVertex(uint32_t v) {
                 nodes[branches[next].from].next[i] = next;
             }
         }
-        if(!inq[next]) {
+        if(simFn != NULL && !inq[next]) {
             addToQueue(next);
         }
     }
@@ -205,3 +208,24 @@ void SimplifyCT::simplify(SimFunction *simFn) {
         }
     }
 }
+
+
+void SimplifyCT::simplify(const std::vector<uint32_t> &order) {
+    qDebug() << "init";
+    initSimplification(NULL);
+
+    qDebug() << "going over order queue";
+    for(int i = 0;i < order.size();i ++) {
+        inq[order.at(i)] = true;
+    }
+    for(int i = 0;i < order.size() - 1;i ++) {
+        uint32_t ano = order.at(i);
+        if(!isCandidate(branches[ano])) {
+            qDebug() << "failing candidate test";
+            assert(false);
+        }
+        inq[ano] = false;
+        removeArc(ano);
+    }
+}
+

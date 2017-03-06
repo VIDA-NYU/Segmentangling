@@ -22,6 +22,7 @@ public:
     ContourTreeData();
 
     void loadBinFile(QString fileName);
+    void loadTxtFile(QString fileName);
 
 protected:
     void loadData(const std::vector<int64_t>& nodeids, const std::vector<unsigned char>& nodefns, const std::vector<char>& nodeTypes, const std::vector<int64_t>& iarcs);
