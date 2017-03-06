@@ -9,6 +9,7 @@
 #include "ContourTreeData.hpp"
 #include "SimplifyCT.hpp"
 #include "Persistence.hpp"
+#include "TriMesh.hpp"
 
 void testDisjointSets() {
     int numElements = 128;
@@ -131,12 +132,45 @@ void testPriorityQueue() {
     }
 }
 
+void testMergeTree() {
+    TriMesh tri;
+    tri.loadData("C:/Users/harishd/Desktop/Courses/Topology-2017/data/2d/assignment.off");
+    MergeTree ct;
+    ct.computeTree(&tri,JoinTree);
+    qDebug() << "done";
+    ct.output("C:/Users/harishd/Desktop/Courses/Topology-2017/data/2d/assignment",JoinTree);
+
+    ContourTreeData ctdata;
+    ctdata.loadBinFile("C:/Users/harishd/Desktop/Courses/Topology-2017/data/2d/assignment");
+    for(size_t i = 0;i < ctdata.noNodes;i ++) {
+        qDebug() << ctdata.nodeVerts[i] << ctdata.fnVals[i] << (int)(ctdata.type[i]);
+    }
+
+    for(size_t i = 0;i < ctdata.noArcs;i ++) {
+        qDebug() <<  ctdata.nodeVerts[ctdata.arcs[i].from] <<  ctdata.nodeVerts[ctdata.arcs[i].to];
+    }
+
+    SimplifyCT sim;
+    sim.setInput(&ctdata);
+    Persistence per(ctdata);
+    sim.simplify(&per);
+
+    for(int i = 0;i < sim.order.size();i ++) {
+        Branch b1 = sim.branches.at(sim.order[i]);
+        int v1 = b1.from;
+        int v2 = b1.to;
+        qDebug() << ctdata.nodeVerts[v1] << ctdata.nodeVerts[v2];
+    }
+    qDebug() << "done!";
+}
+
 int main(int argc, char *argv[])
 {
     QCoreApplication a(argc, argv);
 //    testGrid();
-    testSimplification1();
+//    testSimplification1();
 //    testPriorityQueue();
+    testMergeTree();
     exit(0);
     return a.exec();
 }

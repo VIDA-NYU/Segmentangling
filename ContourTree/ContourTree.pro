@@ -13,7 +13,8 @@ SOURCES += main.cpp \
     Grid3D.cpp \
     SimplifyCT.cpp \
     ContourTreeData.cpp \
-    Persistence.cpp
+    Persistence.cpp \
+    TriMesh.cpp
 
 HEADERS += \
     DisjointSets.hpp \
@@ -24,7 +25,8 @@ HEADERS += \
     ContourTreeData.hpp \
     constants.h \
     SimFunction.hpp \
-    Persistence.hpp
+    Persistence.hpp \
+    TriMesh.hpp
 
 # Unix configuration
 unix:!macx{
