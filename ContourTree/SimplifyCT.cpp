@@ -210,7 +210,7 @@ void SimplifyCT::simplify(SimFunction *simFn) {
 }
 
 
-void SimplifyCT::simplify(const std::vector<uint32_t> &order) {
+void SimplifyCT::simplify(const std::vector<uint32_t> &order, int topk, float th) {
     qDebug() << "init";
     initSimplification(NULL);
 
@@ -218,14 +218,34 @@ void SimplifyCT::simplify(const std::vector<uint32_t> &order) {
     for(int i = 0;i < order.size();i ++) {
         inq[order.at(i)] = true;
     }
-    for(int i = 0;i < order.size() - 1;i ++) {
-        uint32_t ano = order.at(i);
-        if(!isCandidate(branches[ano])) {
-            qDebug() << "failing candidate test";
-            assert(false);
+    if(topk > 0) {
+        int ct = order.size() - topk;
+        for(int i = 0;i < ct;i ++) {
+            uint32_t ano = order.at(i);
+            if(!isCandidate(branches[ano])) {
+                qDebug() << "failing candidate test";
+                assert(false);
+            }
+            inq[ano] = false;
+            removeArc(ano);
         }
-        inq[ano] = false;
-        removeArc(ano);
+    } else {
+        // TODO hardcoded for persistence for now
+        float maxVal = data->fnVals[branches[order.size() - 1].to] - data->fnVals[branches[order.size() - 1].from];
+        for(int i = 0;i < order.size() - 1;i ++) {
+            uint32_t ano = order.at(i);
+            if(!isCandidate(branches[ano])) {
+                qDebug() << "failing candidate test";
+                assert(false);
+            }
+            float fn = data->fnVals[branches[ano].to] - data->fnVals[branches[ano].from];
+            fn /= maxVal;
+            if(fn > th) {
+                break;
+            }
+            inq[ano] = false;
+            removeArc(ano);
+        }
     }
 }
 

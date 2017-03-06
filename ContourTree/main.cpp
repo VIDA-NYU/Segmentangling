@@ -155,12 +155,29 @@ void testMergeTree() {
     Persistence per(ctdata);
     sim.simplify(&per);
 
+    qDebug() << "All branches";
     for(int i = 0;i < sim.order.size();i ++) {
         Branch b1 = sim.branches.at(sim.order[i]);
         int v1 = b1.from;
         int v2 = b1.to;
         qDebug() << ctdata.nodeVerts[v1] << ctdata.nodeVerts[v2];
     }
+
+
+    SimplifyCT sim2;
+    sim2.setInput(&ctdata);
+    sim2.simplify(sim.order,3);
+    qDebug() << "Remaining branches";
+    for(int i = sim.order.size() - 1;i >= 0;i --) {
+        if(sim2.removed[sim.order[i]]) {
+            break;
+        }
+        Branch b1 = sim2.branches.at(sim.order[i]);
+        int v1 = b1.from;
+        int v2 = b1.to;
+        qDebug() << ctdata.nodeVerts[v1] << ctdata.nodeVerts[v2];
+    }
+
     qDebug() << "done!";
 }
 
