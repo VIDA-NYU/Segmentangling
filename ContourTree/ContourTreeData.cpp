@@ -99,6 +99,7 @@ void ContourTreeData::loadData(const std::vector<int64_t> &nodeids, const std::v
 
     for(uint32_t i = 0;i < noNodes;i ++) {
         nodeVerts[i] = nodeids[i];
+        // TODO hard coding again.
         fnVals[i] = (float)(nodefns[i]) / 255.;
         type[i] = nodeTypes[i];
         nodeMap[nodeVerts[i]] = i;

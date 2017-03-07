@@ -2,6 +2,9 @@
 
 #include <cassert>
 #include <QDebug>
+#include <QFile>
+#include <fstream>
+#include <QTextStream>
 
 bool BranchCompare::operator() (uint32_t v1, uint32_t v2) {
      return sim->compare(v1,v2);
@@ -210,7 +213,7 @@ void SimplifyCT::simplify(SimFunction *simFn) {
 }
 
 
-void SimplifyCT::simplify(const std::vector<uint32_t> &order, int topk, float th) {
+void SimplifyCT::simplify(const std::vector<uint32_t> &order, int topk, float th, const std::vector<float> &wts) {
     qDebug() << "init";
     initSimplification(NULL);
 
@@ -219,7 +222,7 @@ void SimplifyCT::simplify(const std::vector<uint32_t> &order, int topk, float th
         inq[order.at(i)] = true;
     }
     if(topk > 0) {
-        int ct = order.size() - topk;
+        size_t ct = order.size() - topk;
         for(int i = 0;i < ct;i ++) {
             uint32_t ano = order.at(i);
             if(!isCandidate(branches[ano])) {
@@ -229,17 +232,14 @@ void SimplifyCT::simplify(const std::vector<uint32_t> &order, int topk, float th
             inq[ano] = false;
             removeArc(ano);
         }
-    } else {
-        // TODO hardcoded for persistence for now
-        float maxVal = data->fnVals[branches[order.size() - 1].to] - data->fnVals[branches[order.size() - 1].from];
+    } else if(th != 0) {
         for(int i = 0;i < order.size() - 1;i ++) {
             uint32_t ano = order.at(i);
             if(!isCandidate(branches[ano])) {
                 qDebug() << "failing candidate test";
                 assert(false);
             }
-            float fn = data->fnVals[branches[ano].to] - data->fnVals[branches[ano].from];
-            fn /= maxVal;
+            float fn = wts.at(i);
             if(fn > th) {
                 break;
             }
@@ -247,5 +247,35 @@ void SimplifyCT::simplify(const std::vector<uint32_t> &order, int topk, float th
             removeArc(ano);
         }
     }
+}
+
+void SimplifyCT::outputOrder(QString fileName) {
+    qDebug() << "Writing meta data";
+    {
+        QFile pr(fileName + ".order.dat");
+        if(!pr.open(QFile::WriteOnly | QIODevice::Text)) {
+            qDebug() << "could not write to file" << fileName + ".order.dat";
+        }
+        QTextStream text(&pr);
+        text << order.size();
+        pr.close();
+    }
+    std::vector<float> wts;
+    float pwt = 0;
+    for(size_t i = 0;i < order.size();i ++) {
+        uint32_t ano = order.at(i);
+        float val = this->simFn->getBranchWeight(ano);
+        wts.push_back(val);
+        if(i > 0) {
+            assert(pwt <= val);
+        }
+        pwt = val;
+    }
+    qDebug() << "writing tree output";
+    QString binFile = fileName + ".order.bin";
+    std::ofstream of(binFile.toStdString(),std::ios::binary);
+    of.write((char *)order.data(),order.size() * sizeof(uint32_t));
+    of.write((char *)wts.data(),wts.size() * sizeof(float));
+    of.close();
 }
 

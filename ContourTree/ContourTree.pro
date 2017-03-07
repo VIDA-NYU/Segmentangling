@@ -14,7 +14,8 @@ SOURCES += main.cpp \
     SimplifyCT.cpp \
     ContourTreeData.cpp \
     Persistence.cpp \
-    TriMesh.cpp
+    TriMesh.cpp \
+    TopologicalFeatures.cpp
 
 HEADERS += \
     DisjointSets.hpp \
@@ -26,7 +27,8 @@ HEADERS += \
     constants.h \
     SimFunction.hpp \
     Persistence.hpp \
-    TriMesh.hpp
+    TriMesh.hpp \
+    TopologicalFeatures.hpp
 
 # Unix configuration
 unix:!macx{

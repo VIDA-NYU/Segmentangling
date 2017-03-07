@@ -10,6 +10,7 @@
 #include "SimplifyCT.hpp"
 #include "Persistence.hpp"
 #include "TriMesh.hpp"
+#include "TopologicalFeatures.hpp"
 
 void testDisjointSets() {
     int numElements = 128;
@@ -50,6 +51,45 @@ void testGrid() {
     qDebug() << "Test 2 - Elapsed time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() << "ms\n";
 
     ct.output("/home/harishd/Desktop/Projects/Fish/data/Fish_256/Fish_256", JoinTree);
+}
+
+void testSimplification3() {
+    ContourTreeData ctdata;
+
+    std::chrono::time_point<std::chrono::system_clock> start, end;
+    start = std::chrono::system_clock::now();
+    ctdata.loadBinFile("../data/Fish_256");
+    end = std::chrono::system_clock::now();
+    qDebug() << "Loading contour tree - Elapsed time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() << "ms\n";
+
+    start = std::chrono::system_clock::now();
+    SimplifyCT sim;
+    sim.setInput(&ctdata);
+    Persistence per(ctdata);
+    sim.simplify(&per);
+    end = std::chrono::system_clock::now();
+    qDebug() << "simplification - Elapsed time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() << "ms\n";
+
+    sim.outputOrder("../data/Fish_256");
+
+//    start = std::chrono::system_clock::now();
+//    std::vector<uint32_t> order = sim.order;
+//    SimplifyCT simo = SimplifyCT();
+//    simo.setInput(&ctdata);
+//    simo.simplify(order,-1,0.2f);
+//    end = std::chrono::system_clock::now();
+//    qDebug() << "simplification using order - Elapsed time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() << "ms\n";
+
+//    qDebug() << "counting remaining features";
+//    int ct = 0;
+//    for(int i = order.size() - 1;i >= 0;i --) {
+//        if(simo.removed[order[i]]) {
+//            break;
+//        }
+//        ct ++;
+//    }
+//    qDebug() << "Remaining features after simplification: " << ct << "of" << order.size();
+//    qDebug() << "done!";
 }
 
 void testSimplification2() {
@@ -142,6 +182,7 @@ void testMergeTree() {
 
     ContourTreeData ctdata;
     ctdata.loadBinFile("C:/Users/harishd/Desktop/Courses/Topology-2017/data/2d/assignment");
+    qDebug() << "************** Merge Tree ********************";
     for(size_t i = 0;i < ctdata.noNodes;i ++) {
         qDebug() << ctdata.nodeVerts[i] << ctdata.fnVals[i] << (int)(ctdata.type[i]);
     }
@@ -154,8 +195,8 @@ void testMergeTree() {
     sim.setInput(&ctdata);
     Persistence per(ctdata);
     sim.simplify(&per);
-
-    qDebug() << "All branches";
+    sim.outputOrder("C:/Users/harishd/Desktop/Courses/Topology-2017/data/2d/assignment");
+    qDebug() << "************** All branches ********************";;
     for(int i = 0;i < sim.order.size();i ++) {
         Branch b1 = sim.branches.at(sim.order[i]);
         int v1 = b1.from;
@@ -167,7 +208,7 @@ void testMergeTree() {
     SimplifyCT sim2;
     sim2.setInput(&ctdata);
     sim2.simplify(sim.order,3);
-    qDebug() << "Remaining branches";
+    qDebug() << "************** Remaining branches ********************";;
     for(int i = sim.order.size() - 1;i >= 0;i --) {
         if(sim2.removed[sim.order[i]]) {
             break;
@@ -181,13 +222,23 @@ void testMergeTree() {
     qDebug() << "done!";
 }
 
+void testApi() {
+    TopologicalFeatures tf;
+    tf.loadData("C:/Users/harishd/Desktop/Courses/Topology-2017/data/2d/assignment");
+    QVector<Feature> features = tf.getFeatures(-1,0.06);
+    for(int i = 0;i < features.size();i ++) {
+        qDebug() << features[i].from << features[i].to << features[i].arcs;
+    }
+}
+
 int main(int argc, char *argv[])
 {
     QCoreApplication a(argc, argv);
 //    testGrid();
-//    testSimplification1();
+//    testSimplification3();
 //    testPriorityQueue();
-    testMergeTree();
+//    testMergeTree();
+    testApi();
     exit(0);
     return a.exec();
 }

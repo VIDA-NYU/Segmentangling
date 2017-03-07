@@ -27,7 +27,8 @@ public:
 
     void setInput(ContourTreeData *data);
     void simplify(SimFunction *simFn);
-    void simplify(const std::vector<uint32_t> &order, int topk = -1, float th = 0);
+    void simplify(const std::vector<uint32_t> &order, int topk = -1, float th = 0, const std::vector<float> &wts = std::vector<float>());
+    void outputOrder(QString fileName);
 
 protected:
     void initSimplification(SimFunction *f);

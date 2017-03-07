@@ -18,3 +18,7 @@ void Persistence::update(const std::vector<Branch> &br, uint32_t brNo) {
 void Persistence::branchRemoved(std::vector<Branch>&, uint32_t, std::vector<bool>&) {
     // not required for persistence
 }
+
+float Persistence::getBranchWeight(uint32_t brNo) {
+    return fn[brNo];
+}
