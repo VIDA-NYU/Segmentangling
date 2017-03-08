@@ -31,12 +31,12 @@ void TopologicalFeatures::loadData(QString dataLocation) {
     bin.close();
 }
 
-QVector<Feature> TopologicalFeatures::getFeatures(int topk, float th) {
+std::vector<Feature> TopologicalFeatures::getFeatures(int topk, float th) {
     SimplifyCT sim;
     sim.setInput(&ctdata);
 
     sim.simplify(order,topk,th,wts);
-    QVector<Feature> features;
+    std::vector<Feature> features;
 
     QSet<size_t> featureSet;
     for(size_t _i = 0;_i < order.size();_i ++) {
@@ -67,13 +67,13 @@ QVector<Feature> TopologicalFeatures::getFeatures(int topk, float th) {
                 assert(false);
             }
             Branch br = sim.branches.at(b);
-            f.arcs << br.arcs;
+            f.arcs.insert(f.arcs.end(),br.arcs.data(), br.arcs.data()+br.arcs.size());
             for(int i = 0;i < br.children.size();i ++) {
                 int bc = br.children.at(i);
                 queue.push_back(bc);
             }
         }
-        features << f;
+        features.push_back(f);
     }
     return features;
 }

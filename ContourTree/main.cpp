@@ -222,13 +222,58 @@ void testMergeTree() {
     qDebug() << "done!";
 }
 
+void preProcessing() {
+    // the actual raw file without the extension. the extensions will be added as and when needed.
+    QString data = "../data/Fish_256";
+
+    std::chrono::time_point<std::chrono::system_clock> start, end;
+    start = std::chrono::system_clock::now();
+    Grid3D grid(256,257,471);
+    end = std::chrono::system_clock::now();
+
+    start = std::chrono::system_clock::now();
+    grid.loadGrid(data + ".raw");
+    MergeTree ct;
+    ct.computeTree(&grid,JoinTree);
+    end = std::chrono::system_clock::now();
+    qDebug() << "Time to compute contour tree: " << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() << "ms\n";
+    ct.output(data, JoinTree);
+
+
+    // now simplify and store simplification hierarchy
+    start = std::chrono::system_clock::now();
+    ContourTreeData ctdata;
+    ctdata.loadBinFile(data);
+
+    SimplifyCT sim;
+    sim.setInput(&ctdata);
+    Persistence per(ctdata);
+    sim.simplify(&per);
+    end = std::chrono::system_clock::now();
+    qDebug() << "Time to simplify: " << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() << "ms\n";
+
+    sim.outputOrder(data);
+    qDebug() << "done";
+}
+
 void testApi() {
+    // the actual raw file without the extension. the extensions will be added as and when needed.
+    QString data = "../data/Fish_256";
     TopologicalFeatures tf;
-    tf.loadData("C:/Users/harishd/Desktop/Courses/Topology-2017/data/2d/assignment");
-    QVector<Feature> features = tf.getFeatures(-1,0.06);
-    for(int i = 0;i < features.size();i ++) {
-        qDebug() << features[i].from << features[i].to << features[i].arcs;
-    }
+    std::chrono::time_point<std::chrono::system_clock> start, end;
+    start = std::chrono::system_clock::now();
+    tf.loadData(data);
+    std::vector<Feature> features = tf.getFeatures(-1,0.1f);
+    end = std::chrono::system_clock::now();
+    qDebug() << "Time to get features: " << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() << "ms";
+    qDebug() << "no. of features:" << features.size() << "\n";
+
+    start = std::chrono::system_clock::now();
+    features = tf.getFeatures(-1,0.2f);
+    end = std::chrono::system_clock::now();
+    qDebug() << "Time to get features: " << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() << "ms";
+    qDebug() << "no. of features:" << features.size() << "\n";
+
 }
 
 int main(int argc, char *argv[])
@@ -238,6 +283,7 @@ int main(int argc, char *argv[])
 //    testSimplification3();
 //    testPriorityQueue();
 //    testMergeTree();
+//    preProcessing();
     testApi();
     exit(0);
     return a.exec();

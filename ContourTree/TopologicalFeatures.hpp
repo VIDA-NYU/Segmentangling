@@ -6,7 +6,7 @@
 #include <QSet>
 
 struct Feature {
-    QVector<uint32_t> arcs;
+    std::vector<uint32_t> arcs;
     uint32_t from, to;
 };
 
@@ -16,7 +16,7 @@ public:
     TopologicalFeatures();
 
     void loadData(QString dataLocation);
-    QVector<Feature> getFeatures(int topk = -1, float th = 0);
+    std::vector<Feature> getFeatures(int topk = -1, float th = 0);
 
 public:
     ContourTreeData ctdata;
