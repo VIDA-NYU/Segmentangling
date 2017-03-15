@@ -3,5 +3,6 @@
 set(dependencies 
 	InviwoBaseGLModule
     InviwoFontRenderingModule
+    Qt5Core
 )
 

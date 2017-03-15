@@ -40,6 +40,8 @@
 
 uniform VolumeParameters volumeParameters;
 uniform sampler3D volume;
+uniform usampler3D segmentationVolume;
+uniform VolumeParameters segmentationVolumeParameters;
 
 uniform sampler2D transferFunction;
 
@@ -65,6 +67,8 @@ uniform VolumeIndicatorParameters positionindicator;
 uniform RaycastingParameters raycaster;
 
 uniform int channel;
+
+uniform int id;
 
 #define ERT_THRESHOLD 0.99  // threshold for early ray termination
 
@@ -105,24 +109,41 @@ vec4 rayTraversal(vec3 entryPoint, vec3 exitPoint, vec2 texCoords, float backgro
 
     while (t < tEnd) {
         samplePos = entryPoint + t * rayDirection;
+
+        // vec4 segVoxel = getNormalizedVoxel(segmentationVolume, segmentationVolumeParameters, samplePos);
+        uvec4 segVoxel = texture(segmentationVolume, samplePos);
+
         voxel = getNormalizedVoxel(volume, volumeParameters, samplePos);
-        color = APPLY_CHANNEL_CLASSIFICATION(transferFunction, voxel, channel);
+
+        // voxel = vec4(segVoxel.r);
+
+        color = vec4(0.0);
+
+        if (segVoxel.r == 100024) {
+            color = vec4(1.0);
+        }
+
+        // color = APPLY_CHANNEL_CLASSIFICATION(transferFunction, voxel, channel);
+        // color = vec4(segVoxel) / 1000.0;
+        // 
+        // 
+        // color = vec4(1.0);
 
         result = DRAW_BACKGROUND(result, t, tIncr, backgroundColor, bgTDepth, tDepth);
         result = DRAW_PLANES(result, samplePos, rayDirection, tIncr, positionindicator, t, tDepth);
 
         if (color.a > 0) {
-            vec3 gradient =
-                COMPUTE_GRADIENT_FOR_CHANNEL(voxel, volume, volumeParameters, samplePos, channel);
-            gradient = normalize(gradient);
+            // vec3 gradient =
+            //     COMPUTE_GRADIENT_FOR_CHANNEL(voxel, volume, volumeParameters, samplePos, channel);
+            // gradient = normalize(gradient);
 
-            // World space position
-            vec3 worldSpacePosition = (volumeParameters.textureToWorld * vec4(samplePos, 1.0)).xyz;
-            // Note that the gradient is reversed since we define the normal of a surface as
-            // the direction towards a lower intensity medium (gradient points in the increasing
-            // direction)
-            color.rgb = APPLY_LIGHTING(lighting, color.rgb, color.rgb, vec3(1.0),
-                                       worldSpacePosition, -gradient, toCameraDir);
+            // // World space position
+            // vec3 worldSpacePosition = (volumeParameters.textureToWorld * vec4(samplePos, 1.0)).xyz;
+            // // Note that the gradient is reversed since we define the normal of a surface as
+            // // the direction towards a lower intensity medium (gradient points in the increasing
+            // // direction)
+            // color.rgb = APPLY_LIGHTING(lighting, color.rgb, color.rgb, vec3(1.0),
+            //                            worldSpacePosition, -gradient, toCameraDir);
 
             result = APPLY_COMPOSITING(result, color, samplePos, voxel, gradient, camera,
                                        raycaster.isoValue, t, tDepth, tIncr);

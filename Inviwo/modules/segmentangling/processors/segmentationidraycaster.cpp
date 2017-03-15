@@ -1,33 +1,6 @@
-/*********************************************************************************
- *
- * Inviwo - Interactive Visualization Workshop
- *
- * Copyright (c) 2012-2017 Inviwo Foundation
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *
- * 1. Redistributions of source code must retain the above copyright notice, this
- * list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright notice,
- * this list of conditions and the following disclaimer in the documentation
- * and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
- * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- *********************************************************************************/
+#include "segmentationidraycaster.h"
 
-#include "volumeraycaster.h"
+
 #include <inviwo/core/ports/imageport.h>
 #include <inviwo/core/io/serialization/serialization.h>
 #include <inviwo/core/io/serialization/versionconverter.h>
@@ -43,155 +16,188 @@
 
 namespace inviwo {
 
-const ProcessorInfo VolumeRaycaster::processorInfo_{
-    "org.inviwo.VolumeRaycaster",  // Class identifier
-    "Volume Raycaster",            // Display name
+const ProcessorInfo SegmentationIdRaycaster::processorInfo_{
+    "bock.segmentationidraycaster",  // Class identifier
+    "Segmentation ID Raycaster",            // Display name
     "Volume Rendering",            // Category
-    CodeState::Stable,             // Code state
+    CodeState::Experimental,             // Code state
     Tags::GL                       // Tags
 };
 
-VolumeRaycaster::VolumeRaycaster()
+SegmentationIdRaycaster::SegmentationIdRaycaster()
     : Processor()
-    , shader_("raycasting.frag", false)
-    , volumePort_("volume")
-    , entryPort_("entry")
-    , exitPort_("exit")
-    , backgroundPort_("bg")
-    , outport_("outport")
-    , transferFunction_("transferFunction", "Transfer function", TransferFunction(), &volumePort_)
-    , channel_("channel", "Render Channel")
-    , raycasting_("raycaster", "Raycasting")
-    , camera_("camera", "Camera")
-    , lighting_("lighting", "Lighting", &camera_)
-    , positionIndicator_("positionindicator", "Position Indicator")
-    , toggleShading_("toggleShading", "Toggle Shading", [this](Event* e) { toggleShading(e); },
-                     IvwKey::L) {
+    , _shader("segmentationraycaster.frag", false)
+    , _volumePort("volume")
+    , _segmentationPort("segmentation")
+    , _entryPort("entry")
+    , _exitPort("exit")
+    , _backgroundPort("bg")
+    , _outport("outport")
+    , _id("id", "Identifier", -1, -1, std::numeric_limits<int>::max(), 1)
+    , _transferFunction("transferFunction", "Transfer function", TransferFunction(), &_volumePort)
+    , _channel("channel", "Render Channel")
+    , _raycasting("raycaster", "Raycasting")
+    , _camera("camera", "Camera")
+    , _lighting("lighting", "Lighting", &_camera)
+    , _positionIndicator("positionindicator", "Position Indicator")
+    , _toggleShading("toggleShading", "Toggle Shading", [this](Event* e) { toggleShading(e); },
+                     IvwKey::L)
+{
                      
-    shader_.onReload([this]() { invalidate(InvalidationLevel::InvalidResources); });
+    _shader.onReload([this]() { invalidate(InvalidationLevel::InvalidResources); });
 
-    addPort(volumePort_, "VolumePortGroup");
-    addPort(entryPort_, "ImagePortGroup1");
-    addPort(exitPort_, "ImagePortGroup1");
-    addPort(outport_, "ImagePortGroup1");
-    addPort(backgroundPort_ ,"ImagePortGroup1");
+    addPort(_volumePort, "VolumePortGroup");
+    addPort(_segmentationPort, "VolumePortGroup");
+    addPort(_entryPort, "ImagePortGroup1");
+    addPort(_exitPort, "ImagePortGroup1");
+    addPort(_outport, "ImagePortGroup1");
+    addPort(_backgroundPort,"ImagePortGroup1");
 
-    backgroundPort_.setOptional(true);
+    _backgroundPort.setOptional(true);
 
-    channel_.addOption("Channel 1", "Channel 1", 0);
-    channel_.setSerializationMode(PropertySerializationMode::All);
-    channel_.setCurrentStateAsDefault();
+    _channel.addOption("Channel 1", "Channel 1", 0);
+    _channel.setSerializationMode(PropertySerializationMode::All);
+    _channel.setCurrentStateAsDefault();
 
-    volumePort_.onChange(this, &VolumeRaycaster::onVolumeChange);
-    backgroundPort_.onConnect([&]() { this->invalidate(InvalidationLevel::InvalidResources); });
-    backgroundPort_.onDisconnect([&]() { this->invalidate(InvalidationLevel::InvalidResources); });
+    //_volumePort.onChange(this, &SegmentationIdRaycaster::onVolumeChange);
+    _backgroundPort.onConnect([&]() { this->invalidate(InvalidationLevel::InvalidResources); });
+    _backgroundPort.onDisconnect([&]() { this->invalidate(InvalidationLevel::InvalidResources); });
 
     // change the currently selected channel when a pre-computed gradient is selected
-    raycasting_.gradientComputationMode_.onChange([this]() {
-        if (channel_.size() == 4) {
-            if (raycasting_.gradientComputationMode_.isSelectedIdentifier("precomputedXYZ")) {
-                channel_.set(3);
-            } else if (raycasting_.gradientComputationMode_.isSelectedIdentifier(
+    _raycasting.gradientComputationMode_.onChange([this]() {
+        if (_channel.size() == 4) {
+            if (_raycasting.gradientComputationMode_.isSelectedIdentifier("precomputedXYZ")) {
+                _channel.set(3);
+            } else if (_raycasting.gradientComputationMode_.isSelectedIdentifier(
                            "precomputedYZW")) {
-                channel_.set(0);
+                _channel.set(0);
             }
         }
     });
 
-    addProperty(channel_);
-    addProperty(transferFunction_);
-    addProperty(raycasting_);
-    addProperty(camera_);
-    addProperty(lighting_);
-    addProperty(positionIndicator_);
-    addProperty(toggleShading_);
+    addProperty(_channel);
+    addProperty(_transferFunction);
+    addProperty(_raycasting);
+    addProperty(_camera);
+    addProperty(_lighting);
+    addProperty(_positionIndicator);
+    addProperty(_toggleShading);
+    addProperty(_id);
 }
 
-const ProcessorInfo VolumeRaycaster::getProcessorInfo() const {
+const ProcessorInfo SegmentationIdRaycaster::getProcessorInfo() const {
     return processorInfo_;
 }
 
-void VolumeRaycaster::initializeResources() {
-    utilgl::addShaderDefines(shader_, raycasting_);
-    utilgl::addShaderDefines(shader_, camera_);
-    utilgl::addShaderDefines(shader_, lighting_);
-    utilgl::addShaderDefines(shader_, positionIndicator_);
-    utilgl::addShaderDefinesBGPort(shader_, backgroundPort_);
-    shader_.build();
+void SegmentationIdRaycaster::initializeResources() {
+    utilgl::addShaderDefines(_shader, _raycasting);
+    utilgl::addShaderDefines(_shader, _camera);
+    utilgl::addShaderDefines(_shader, _lighting);
+    utilgl::addShaderDefines(_shader, _positionIndicator);
+    utilgl::addShaderDefinesBGPort(_shader, _backgroundPort);
+    _shader.build();
 }
 
-void VolumeRaycaster::onVolumeChange() {
-    if (volumePort_.hasData()) {
-        size_t channels = volumePort_.getData()->getDataFormat()->getComponents();
+//void SegmentationIdRaycaster::onVolumeChange() {
+//    if (_volumePort.hasData()) {
+//        size_t channels = _volumePort.getData()->getDataFormat()->getComponents();
+//
+//        if (channels == _channel.size()) return;
+//
+//        std::vector<OptionPropertyIntOption> channelOptions;
+//        for (size_t i = 0; i < channels; i++) {
+//            channelOptions.emplace_back("Channel " + toString(i+1), "Channel " + toString(i+1),
+//                                        static_cast<int>(i));
+//        }
+//        _channel.replaceOptions(channelOptions);
+//        _channel.setCurrentStateAsDefault();
+//    }
+//}
 
-        if (channels == channel_.size()) return;
-
-        std::vector<OptionPropertyIntOption> channelOptions;
-        for (size_t i = 0; i < channels; i++) {
-            channelOptions.emplace_back("Channel " + toString(i+1), "Channel " + toString(i+1),
-                                        static_cast<int>(i));
-        }
-        channel_.replaceOptions(channelOptions);
-        channel_.setCurrentStateAsDefault();
-    }
-}
-
-void VolumeRaycaster::process() {
-    if (volumePort_.isChanged()) {
-        auto newVolume = volumePort_.getData();
+void SegmentationIdRaycaster::process() {
+    if (_volumePort.isChanged()) {
+        auto newVolume = _volumePort.getData();
 
         if (newVolume->hasRepresentation<VolumeGL>()) {
-            loadedVolume_ = newVolume;
+            _loadedVolume= newVolume;
         } else {
             dispatchPool([this, newVolume]() {
                 RenderContext::getPtr()->activateLocalRenderContext();
                 newVolume->getRep<kind::GL>();
                 glFinish();
                 dispatchFront([this, newVolume]() {
-                    loadedVolume_ = newVolume;
+                    _loadedVolume= newVolume;
                     invalidate(InvalidationLevel::InvalidOutput);
                 });
             });
         }
     }
 
-    if (!loadedVolume_) return;
-    if (!loadedVolume_->hasRepresentation<VolumeGL>()) {
+    if (_segmentationPort.isChanged()) {
+        auto newVolume = _segmentationPort.getData();
+
+        if (newVolume->hasRepresentation<VolumeGL>()) {
+            _loadedSegmentationVolume = newVolume;
+        }
+        else {
+            dispatchPool([this, newVolume]() {
+                RenderContext::getPtr()->activateLocalRenderContext();
+                newVolume->getRep<kind::GL>();
+                glFinish();
+                dispatchFront([this, newVolume]() {
+                    _loadedSegmentationVolume = newVolume;
+                    invalidate(InvalidationLevel::InvalidOutput);
+                });
+            });
+        }
+    }
+
+    if (!_loadedVolume) return;
+    if (!_loadedVolume->hasRepresentation<VolumeGL>()) {
         LogWarn("No GL rep !!!");
         return;
     }
 
-    utilgl::activateAndClearTarget(outport_);
-    shader_.activate();
+    if (!_loadedSegmentationVolume) return;
+    if (!_loadedSegmentationVolume->hasRepresentation<VolumeGL>()) {
+        LogWarn("No GL rep segmentation !!!");
+        return;
+    }
+
+    utilgl::activateAndClearTarget(_outport);
+    _shader.activate();
 
     TextureUnitContainer units;
-    utilgl::bindAndSetUniforms(shader_, units, *loadedVolume_, "volume");
-    utilgl::bindAndSetUniforms(shader_, units, transferFunction_);
-    utilgl::bindAndSetUniforms(shader_, units, entryPort_, ImageType::ColorDepthPicking);
-    utilgl::bindAndSetUniforms(shader_, units, exitPort_, ImageType::ColorDepth);
-    if(backgroundPort_.isConnected()){
-        utilgl::bindAndSetUniforms(shader_, units, backgroundPort_, ImageType::ColorDepthPicking);
+    utilgl::bindAndSetUniforms(_shader, units, *_loadedVolume, "volume");
+    utilgl::bindAndSetUniforms(_shader, units, *_loadedSegmentationVolume, "segmentationVolume");
+
+    utilgl::bindAndSetUniforms(_shader, units, _transferFunction);
+    utilgl::bindAndSetUniforms(_shader, units, _entryPort, ImageType::ColorDepthPicking);
+    utilgl::bindAndSetUniforms(_shader, units, _exitPort, ImageType::ColorDepth);
+
+    if(_backgroundPort.isConnected()){
+        utilgl::bindAndSetUniforms(_shader, units, _backgroundPort, ImageType::ColorDepthPicking);
     }
-    utilgl::setUniforms(shader_, outport_, camera_, lighting_, raycasting_, positionIndicator_,
-                        channel_);
+    utilgl::setUniforms(_shader, _outport, _camera, _lighting, _raycasting, _positionIndicator,
+        _channel, _id);
 
     utilgl::singleDrawImagePlaneRect();
 
-    shader_.deactivate();
+    _shader.deactivate();
     utilgl::deactivateCurrentTarget();
 }
 
-void VolumeRaycaster::toggleShading(Event*) {
-    if (lighting_.shadingMode_.get() == ShadingMode::None) {
-        lighting_.shadingMode_.set(ShadingMode::Phong);
+void SegmentationIdRaycaster::toggleShading(Event*) {
+    if (_lighting.shadingMode_.get() == ShadingMode::None) {
+        _lighting.shadingMode_.set(ShadingMode::Phong);
     } else {
-        lighting_.shadingMode_.set(ShadingMode::None);
+        _lighting.shadingMode_.set(ShadingMode::None);
     }
 }
 
 // override to do member renaming.
-void VolumeRaycaster::deserialize(Deserializer& d) {
-    util::renamePort(d, {{&entryPort_, "entry-points"}, {&exitPort_, "exit-points"}});
+void SegmentationIdRaycaster::deserialize(Deserializer& d) {
+    util::renamePort(d, {{&_entryPort, "entry-points"}, {&_exitPort, "exit-points"}});
     Processor::deserialize(d);
 }
 
