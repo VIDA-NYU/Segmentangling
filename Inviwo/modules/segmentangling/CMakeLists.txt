@@ -4,6 +4,8 @@ ivw_module(Segmentangling)
 #--------------------------------------------------------------------
 # Add header files
 set(HEADER_FILES 
+    ${CMAKE_CURRENT_SOURCE_DIR}/processors/contourfilter.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/processors/loadcontourtree.h
     ${CMAKE_CURRENT_SOURCE_DIR}/processors/segmentationidraycaster.h
 
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../ContourTree/constants.h
@@ -23,6 +25,8 @@ ivw_group("Header Files" ${HEADER_FILES})
 #--------------------------------------------------------------------
 # Add source files
 set(SOURCE_FILES
+    ${CMAKE_CURRENT_SOURCE_DIR}/processors/contourfilter.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/processors/loadcontourtree.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/processors/segmentationidraycaster.cpp
 
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../ContourTree/ContourTreeData.cpp
