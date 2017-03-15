@@ -5,6 +5,8 @@
 #include <vector>
 #include <cassert>
 
+namespace contourtree {
+
 /*
  * Assumes signed primitives
  */
@@ -85,4 +87,8 @@ void DisjointSets<T>::mergeSet(const T& root1, const T& root2) {
     }
 }
 
+} // namespace
+
+
 #endif // DISJOINTSETS_HPP
+

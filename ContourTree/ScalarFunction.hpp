@@ -4,6 +4,8 @@
 #include <QVector>
 #include <stdint.h>
 
+namespace contourtree {
+
 class ScalarFunction {
 
 public:
@@ -13,6 +15,8 @@ public:
     virtual bool lessThan(int64_t v1, int64_t v2) = 0;
     virtual unsigned char getFunctionValue(int64_t v) = 0;
 };
+
+}
 
 #endif // SCALARFUNCTION
 

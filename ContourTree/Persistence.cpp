@@ -1,5 +1,7 @@
 #include "Persistence.hpp"
 
+namespace contourtree {
+
 Persistence::Persistence(const ContourTreeData &ctData) {
     fnVals = ctData.fnVals.data();
 }
@@ -21,4 +23,6 @@ void Persistence::branchRemoved(std::vector<Branch>&, uint32_t, std::vector<bool
 
 float Persistence::getBranchWeight(uint32_t brNo) {
     return fn[brNo];
+}
+
 }

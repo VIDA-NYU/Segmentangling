@@ -6,6 +6,8 @@
 
 #include<QDebug>
 
+namespace contourtree {
+
 TopologicalFeatures::TopologicalFeatures() { }
 
 void TopologicalFeatures::loadData(QString dataLocation) {
@@ -76,4 +78,6 @@ std::vector<Feature> TopologicalFeatures::getFeatures(int topk, float th) {
         features.push_back(f);
     }
     return features;
+}
+
 }

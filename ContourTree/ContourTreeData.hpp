@@ -5,6 +5,8 @@
 #include <QVector>
 #include <QHash>
 
+namespace contourtree {
+
 struct Node {
     QVector<uint32_t> next;
     QVector<uint32_t> prev;
@@ -39,5 +41,7 @@ public:
 
     QHash<int64_t, uint32_t> nodeMap;
 };
+
+} // namespace contourtree
 
 #endif // CONTOURTREEDATA_HPP

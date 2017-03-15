@@ -6,6 +6,8 @@
 #include <fstream>
 #include <QTextStream>
 
+namespace contourtree {
+
 bool BranchCompare::operator() (uint32_t v1, uint32_t v2) {
      return sim->compare(v1,v2);
 }
@@ -279,3 +281,4 @@ void SimplifyCT::outputOrder(QString fileName) {
     of.close();
 }
 
+}

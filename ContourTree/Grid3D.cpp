@@ -4,6 +4,8 @@
 #include <fstream>
 #include <QString>
 
+namespace contourtree {
+
 Grid3D::Grid3D(int resx, int resy, int resz) :
     dimx(resx), dimy(resy), dimz(resz)
 {
@@ -133,3 +135,4 @@ void Grid3D::updateStars() {
 
 }
 
+} // namespace

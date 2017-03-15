@@ -1,8 +1,10 @@
 #ifndef PERSISTENCE_HPP
 #define PERSISTENCE_HPP
 
-#include <SimFunction.hpp>
-#include <ContourTreeData.hpp>
+#include "SimFunction.hpp"
+#include "ContourTreeData.hpp"
+
+namespace contourtree {
 
 class Persistence : public SimFunction
 {
@@ -18,5 +20,7 @@ public:
     const float *fnVals;
     float *fn;
 };
+
+}
 
 #endif // PERSISTENCE_HPP

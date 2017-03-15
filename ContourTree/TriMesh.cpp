@@ -5,6 +5,8 @@
 #include <QDebug>
 #include <QSet>
 
+namespace contourtree {
+
 TriMesh::TriMesh()
 {
 
@@ -79,4 +81,6 @@ void TriMesh::loadData(QString fileName)
         maxStar = std::max(maxStar,vertices[i].adj.size());
     }
     qDebug() << maxStar;
+}
+
 }

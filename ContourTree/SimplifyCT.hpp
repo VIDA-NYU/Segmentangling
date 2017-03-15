@@ -1,14 +1,16 @@
 #ifndef SIMPLIFYCT_HPP
 #define SIMPLIFYCT_HPP
 
-#include <ContourTreeData.hpp>
-#include <SimFunction.hpp>
+#include "ContourTreeData.hpp"
+#include "SimFunction.hpp"
 #include <queue>
 #include <vector>
 
 #if defined (WIN32)
 #include <functional>
 #endif
+
+namespace contourtree {
 
 class SimplifyCT;
 
@@ -56,5 +58,7 @@ public:
     std::vector<uint32_t> order;
     std::vector<std::vector<uint32_t>> vArray;
 };
+
+}
 
 #endif // SIMPLIFYCT_HPP

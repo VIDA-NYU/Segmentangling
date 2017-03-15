@@ -4,6 +4,8 @@
 #include <QVector>
 #include <stdint.h>
 
+namespace contourtree {
+
 struct Branch {
     uint32_t from;
     uint32_t to;
@@ -21,5 +23,7 @@ public:
     virtual void branchRemoved(std::vector<Branch>& br, uint32_t brNo, std::vector<bool>& invalid) = 0;
     virtual float getBranchWeight(uint32_t brNo) = 0;
 };
+
+}
 
 #endif // SIMFUNCTION_HPP

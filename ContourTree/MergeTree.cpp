@@ -10,6 +10,8 @@
 #include <parallel/algorithm>
 #endif
 
+namespace contourtree {
+
 MergeTree::MergeTree()
 {
     newRoot = 0;
@@ -282,4 +284,6 @@ void MergeTree::processVertex(int64_t v) {
         int64_t comp = nodes.find(v);
         cpMap[comp] = v;
     }
+}
+
 }

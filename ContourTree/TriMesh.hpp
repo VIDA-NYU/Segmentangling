@@ -1,8 +1,10 @@
 #ifndef TRIMESH_HPP
 #define TRIMESH_HPP
 
-#include <ScalarFunction.hpp>
+#include "ScalarFunction.hpp"
 #include <QSet>
+
+namespace contourtree {
 
 class TriMesh : public ScalarFunction
 {
@@ -29,5 +31,7 @@ public:
     std::vector<Vertex> vertices;
     int maxStar;
 };
+
+}
 
 #endif // TRIMESH_HPP

@@ -6,6 +6,8 @@
 #include <stdint.h>
 #include <vector>
 
+namespace contourtree {
+
 struct Tet {
     int64_t v[4];
 };
@@ -41,5 +43,7 @@ protected:
         return (x + y * dimx + z * dimx * dimy);
     }
 };
+
+} // namespace 
 
 #endif // GRID3D_H

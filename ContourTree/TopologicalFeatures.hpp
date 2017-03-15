@@ -1,9 +1,11 @@
 #ifndef TOPOLOGICALFEATURES_HPP
 #define TOPOLOGICALFEATURES_HPP
 
-#include <SimplifyCT.hpp>
+#include "SimplifyCT.hpp"
 #include <QString>
 #include <QSet>
+
+namespace contourtree {
 
 struct Feature {
     std::vector<uint32_t> arcs;
@@ -23,5 +25,7 @@ public:
     std::vector<uint32_t> order;
     std::vector<float> wts;
 };
+
+}
 
 #endif // TOPOLOGICALFEATURES_HPP

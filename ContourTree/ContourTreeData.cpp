@@ -5,7 +5,9 @@
 #include <fstream>
 #include <cassert>
 #include <QDebug>
-#include <constants.h>
+#include "constants.h"
+
+namespace contourtree {
 
 ContourTreeData::ContourTreeData() {
 
@@ -87,7 +89,7 @@ void ContourTreeData::loadTxtFile(QString fileName) {
     }
     ip.close();
     qDebug() << "finished reading data";
-    this->loadData(nodeids,nodefns,nodeTypes,arcs);
+    this->loadData(nodeids,nodefns, nodeTypes,arcs);
 }
 
 void ContourTreeData::loadData(const std::vector<int64_t> &nodeids, const std::vector<unsigned char> &nodefns, const std::vector<char> &nodeTypes, const std::vector<int64_t> &iarcs) {
@@ -113,3 +115,5 @@ void ContourTreeData::loadData(const std::vector<int64_t> &nodeids, const std::v
         nodes[arcs[i].to].prev << i;
     }
 }
+
+} // namespace

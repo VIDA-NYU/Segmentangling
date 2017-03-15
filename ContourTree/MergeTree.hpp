@@ -1,11 +1,13 @@
 #ifndef MERGETREE_H
 #define MERGETREE_H
 
-#include <constants.h>
+#include "constants.h"
 #include "ScalarFunction.hpp"
 #include <vector>
-#include <DisjointSets.hpp>
+#include "DisjointSets.hpp"
 #include <QSet>
+
+namespace contourtree {
 
 class MergeTree
 {
@@ -50,5 +52,7 @@ public:
 private:
     QVector<int64_t> star;
 };
+
+}
 
 #endif // MERGETREE_H
