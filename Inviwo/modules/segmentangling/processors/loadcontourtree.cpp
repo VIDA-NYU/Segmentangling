@@ -16,6 +16,8 @@
 
 #include "../../ContourTree/TopologicalFeatures.hpp"
 
+#include <algorithm>
+
 namespace inviwo {
 
 const ProcessorInfo LoadContourTree::processorInfo_{
@@ -31,7 +33,6 @@ LoadContourTree::LoadContourTree()
     , _outport("identifierBuffer")
     , _contourTreeLevel("contourTreeLevel", "Contour Tree Level", 0.f, 0.f, 1.f)
     , _contourTreeFile("contourTreeFile", "Contour Tree File")
-    , _buffer(0)
     , _fileIsDirty(false)
     , _dataIsDirty(false)
 {
@@ -58,53 +59,41 @@ void LoadContourTree::process() {
 
 
     if (_dataIsDirty) {
-        if (_buffer == 0) {
-            glGenBuffers(1, &_buffer);
-            LogInfo("Created buffer " << _buffer);
-
-        }
+        GLuint* buffer = new GLuint;
+        glGenBuffers(1, buffer);
+        LogInfo("Created buffer " << *buffer);
 
 
         std::vector<contourtree::Feature> features = tf.getFeatures(-1, _contourTreeLevel);
 
-        // Buffer data layout:
-        // uint32:  Number of features
-        // per feature
-        //   uint32:  Number of identifiers
-        //   list of uint32 as identifiers
-
-
-        // Required size:
-
-        uint32_t requiredSize =  (1 + features.size() + std::accumulate(
+        contourtree::Feature& f = *std::max_element(
             features.begin(),
             features.end(),
-            uint32_t(0), 
-            [](uint32_t a, const contourtree::Feature& f) {
-                return a + static_cast<uint32_t>(f.arcs.size());
+            [](const contourtree::Feature& lhs, const contourtree::Feature& rhs) {
+                return *std::max_element(lhs.arcs.begin(), lhs.arcs.end()) < *std::max_element(rhs.arcs.begin(), rhs.arcs.end());
             }
-        ));
-
-        LogInfo("Creating buffer of size " << sizeof(uint32_t) * requiredSize);
-        std::vector<uint32_t> buffer;
-        buffer.reserve(requiredSize);
-        
-        buffer.push_back(static_cast<uint32_t>(features.size()));
-        for (const contourtree::Feature& f : features) {
-            buffer.push_back(static_cast<uint32_t>(f.arcs.size()));
-            buffer.insert(
-                buffer.end(),
-                std::make_move_iterator(f.arcs.begin()),
-                std::make_move_iterator(f.arcs.end())
-            );
-        }
-        
-        glNamedBufferData(
-            _buffer,
-            sizeof(uint32_t) * buffer.size(),
-            buffer.data(),
-            GL_STATIC_READ
         );
+
+        uint32_t size = *std::max_element(f.arcs.begin(), f.arcs.end());
+
+        // The buffer contains a linearized map from voxel identifier -> feature number
+        std::vector<uint32_t> bufferData(size + 1, 0);
+        for (size_t i = 0; i < features.size(); ++i) {
+            for (uint32_t j : features[i].arcs) {
+                bufferData[j] = i;
+            }
+        }
+
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, *buffer);
+        glBufferData(
+            GL_SHADER_STORAGE_BUFFER,
+            sizeof(uint32_t) * bufferData.size(),
+            bufferData.data(),
+            GL_DYNAMIC_COPY
+        );
+
+        _outport.setData(buffer);
+
         _dataIsDirty = false;
     }
 }

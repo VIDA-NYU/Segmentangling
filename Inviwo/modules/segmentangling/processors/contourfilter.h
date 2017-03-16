@@ -7,12 +7,13 @@
 #include <inviwo/core/ports/volumeport.h>
 #include <inviwo/core/properties/ordinalproperty.h>
 #include <modules/opengl/inviwoopengl.h>
+#include <modules/basegl/processors/volumeprocessing/volumeglprocessor.h>
 
 #include "../../ContourTree/TopologicalFeatures.hpp"
 
 namespace inviwo {
 
-class IVW_MODULE_SEGMENTANGLING_API ContourFilter : public Processor {
+class IVW_MODULE_SEGMENTANGLING_API ContourFilter : public VolumeGLProcessor {
 public:
     ContourFilter();
     virtual ~ContourFilter() = default;
@@ -21,19 +22,9 @@ public:
     static const ProcessorInfo processorInfo_;
 
 protected:
-    virtual void process() override;
+    virtual void preProcess(TextureUnitContainer &cont) override;
     
-    VolumeInport _volumeIn;
     DataInport<GLuint> _contour;
-
-    VolumeOutport _volumeOut;
-
-    contourtree::TopologicalFeatures tf;
-    GLuint _buffer;
-
-
-    bool _fileIsDirty;
-    bool _dataIsDirty;
 };
 
 } // namespace

@@ -29,6 +29,7 @@ SegmentationIdRaycaster::SegmentationIdRaycaster()
     , _shader("segmentationraycaster.frag", false)
     , _volumePort("volume")
     , _segmentationPort("segmentation")
+    , _contour("contour")
     , _entryPort("entry")
     , _exitPort("exit")
     , _backgroundPort("bg")
@@ -48,6 +49,7 @@ SegmentationIdRaycaster::SegmentationIdRaycaster()
 
     addPort(_volumePort, "VolumePortGroup");
     addPort(_segmentationPort, "VolumePortGroup");
+    addPort(_contour);
     addPort(_entryPort, "ImagePortGroup1");
     addPort(_exitPort, "ImagePortGroup1");
     addPort(_outport, "ImagePortGroup1");
@@ -170,6 +172,10 @@ void SegmentationIdRaycaster::process() {
     TextureUnitContainer units;
     utilgl::bindAndSetUniforms(_shader, units, *_loadedVolume, "volume");
     utilgl::bindAndSetUniforms(_shader, units, *_loadedSegmentationVolume, "segmentationVolume");
+
+    GLuint ssbo = *(_contour.getData());
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, ssbo);
 
     utilgl::bindAndSetUniforms(_shader, units, _transferFunction);
     utilgl::bindAndSetUniforms(_shader, units, _entryPort, ImageType::ColorDepthPicking);

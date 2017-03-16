@@ -27,21 +27,21 @@ const ProcessorInfo ContourFilter::processorInfo_{
 };
 
 ContourFilter::ContourFilter()
-    : Processor()
-    , _volumeIn("volume.in")
+    : VolumeGLProcessor("contourfilter.frag")
     , _contour("identifierBuffer")
-    , _volumeOut("volume.out")
 {
-    addPort(_volumeIn, "VolumePortGroup");
     addPort(_contour, "ContourGroup");
-    addPort(_volumeOut, "VolumePortGroup");
 }
 
 const ProcessorInfo ContourFilter::getProcessorInfo() const {
     return processorInfo_;
 }
 
-void ContourFilter::process() {
+void ContourFilter::preProcess(TextureUnitContainer& cont) {
+    GLuint ssbo = *(_contour.getData());
+
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, ssbo);
 }
 
 }  // namespace

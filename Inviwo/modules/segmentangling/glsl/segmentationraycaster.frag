@@ -38,6 +38,10 @@
 #include "utils/shading.glsl"
 #include "utils/raycastgeometry.glsl"
 
+layout (std430, binding = 0) buffer Contour {
+    uint values[];
+} contour;
+
 uniform VolumeParameters volumeParameters;
 uniform sampler3D volume;
 uniform usampler3D segmentationVolume;
@@ -111,7 +115,7 @@ vec4 rayTraversal(vec3 entryPoint, vec3 exitPoint, vec2 texCoords, float backgro
         samplePos = entryPoint + t * rayDirection;
 
         // vec4 segVoxel = getNormalizedVoxel(segmentationVolume, segmentationVolumeParameters, samplePos);
-        uvec4 segVoxel = texture(segmentationVolume, samplePos);
+        uint segVoxel = texture(segmentationVolume, samplePos).r;
 
         voxel = getNormalizedVoxel(volume, volumeParameters, samplePos);
 
@@ -119,9 +123,14 @@ vec4 rayTraversal(vec3 entryPoint, vec3 exitPoint, vec2 texCoords, float backgro
 
         color = vec4(0.0);
 
-        if (segVoxel.r == 100024) {
-            color = vec4(1.0);
+        if (contour.values[segVoxel] == id) {
+            color = APPLY_CHANNEL_CLASSIFICATION(transferFunction, voxel, channel);
+            // color = vec4(1.0);
         }
+
+        // if (segVoxel.r == 100024) {
+            // color = vec4(1.0);
+        // }
 
         // color = APPLY_CHANNEL_CLASSIFICATION(transferFunction, voxel, channel);
         // color = vec4(segVoxel) / 1000.0;

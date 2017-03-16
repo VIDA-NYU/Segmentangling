@@ -28,7 +28,6 @@ protected:
     StringProperty _contourTreeFile;
 
     contourtree::TopologicalFeatures tf;
-    GLuint _buffer;
 
 
     bool _fileIsDirty;

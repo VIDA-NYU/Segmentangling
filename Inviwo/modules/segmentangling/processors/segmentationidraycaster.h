@@ -40,6 +40,7 @@ protected:
     Shader _shader;
     VolumeInport _volumePort;
     VolumeInport _segmentationPort;
+    DataInport<GLuint> _contour;
     std::shared_ptr<const Volume> _loadedVolume;
     std::shared_ptr<const Volume> _loadedSegmentationVolume;
     ImageInport _entryPort;
