@@ -11,6 +11,7 @@
 #include "Persistence.hpp"
 #include "TriMesh.hpp"
 #include "TopologicalFeatures.hpp"
+#include "HyperVolume.hpp"
 
 using namespace contourtree;
 
@@ -229,17 +230,17 @@ void preProcessing() {
     QString data = "../data/Fish_256";
 
     std::chrono::time_point<std::chrono::system_clock> start, end;
-    start = std::chrono::system_clock::now();
-    Grid3D grid(256,257,471);
-    end = std::chrono::system_clock::now();
+//    start = std::chrono::system_clock::now();
+//    Grid3D grid(256,257,471);
+//    end = std::chrono::system_clock::now();
 
-    start = std::chrono::system_clock::now();
-    grid.loadGrid(data + ".raw");
-    MergeTree ct;
-    ct.computeTree(&grid,JoinTree);
-    end = std::chrono::system_clock::now();
-    qDebug() << "Time to compute contour tree: " << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() << "ms\n";
-    ct.output(data, JoinTree);
+//    start = std::chrono::system_clock::now();
+//    grid.loadGrid(data + ".raw");
+//    MergeTree ct;
+//    ct.computeTree(&grid,JoinTree);
+//    end = std::chrono::system_clock::now();
+//    qDebug() << "Time to compute contour tree: " << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() << "ms\n";
+//    ct.output(data, JoinTree);
 
 
     // now simplify and store simplification hierarchy
@@ -249,8 +250,9 @@ void preProcessing() {
 
     SimplifyCT sim;
     sim.setInput(&ctdata);
-    Persistence per(ctdata);
-    sim.simplify(&per);
+//    Persistence per(ctdata);
+    HyperVolume hv(ctdata,data + ".part.raw");
+    sim.simplify(&hv);
     end = std::chrono::system_clock::now();
     qDebug() << "Time to simplify: " << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() << "ms\n";
 
@@ -303,8 +305,8 @@ int main(int argc, char *argv[])
 //    testSimplification3();
 //    testPriorityQueue();
 //    testMergeTree();
-//    preProcessing();
-    testApi();
+    preProcessing();
+//    testApi();
     exit(0);
     return a.exec();
 }

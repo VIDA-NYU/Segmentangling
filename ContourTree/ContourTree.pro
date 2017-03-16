@@ -15,7 +15,8 @@ SOURCES += main.cpp \
     ContourTreeData.cpp \
     Persistence.cpp \
     TriMesh.cpp \
-    TopologicalFeatures.cpp
+    TopologicalFeatures.cpp \
+    HyperVolume.cpp
 
 HEADERS += \
     DisjointSets.hpp \
@@ -28,7 +29,8 @@ HEADERS += \
     SimFunction.hpp \
     Persistence.hpp \
     TriMesh.hpp \
-    TopologicalFeatures.hpp
+    TopologicalFeatures.hpp \
+    HyperVolume.hpp
 
 # Unix configuration
 unix:!macx{

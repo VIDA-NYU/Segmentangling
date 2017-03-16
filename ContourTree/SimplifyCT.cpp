@@ -260,12 +260,10 @@ void SimplifyCT::outputOrder(QString fileName) {
         }
         QTextStream text(&pr);
         text << order.size() << "\n";
-//        text << data->noArcs << "\n";
         pr.close();
     }
     std::vector<float> wts;
     float pwt = 0;
-//    std::vector<uint32_t> arcs(data->noArcs,-1);
     for(size_t i = 0;i < order.size();i ++) {
         uint32_t ano = order.at(i);
         float val = this->simFn->getBranchWeight(ano);
@@ -274,14 +272,16 @@ void SimplifyCT::outputOrder(QString fileName) {
             assert(pwt <= val);
         }
         pwt = val;
-
-//        for(uint32_t j: this->branches[ano].arcs) {
-//            arcs[j] = i;
-//        }
     }
-//    for(uint32_t ai: arcs) {
-//        assert(ai != uint32_t(-1));
-//    }
+
+    // normalize weights
+    float maxWt = wts.at(wts.size() - 1);
+    if(maxWt == 0) maxWt = 1;
+    for(int i = 0;i < wts.size();i ++) {
+        qDebug() << wts[i];
+        wts[i] /= maxWt;
+    }
+
     qDebug() << "writing tree output";
     QString binFile = fileName + ".order.bin";
     std::ofstream of(binFile.toStdString(),std::ios::binary);
