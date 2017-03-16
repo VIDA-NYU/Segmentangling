@@ -12,6 +12,8 @@
 #include "TriMesh.hpp"
 #include "TopologicalFeatures.hpp"
 
+using namespace contourtree;
+
 void testDisjointSets() {
     int numElements = 128;
     int numInSameSet = 16;
@@ -262,17 +264,35 @@ void testApi() {
     TopologicalFeatures tf;
     std::chrono::time_point<std::chrono::system_clock> start, end;
     start = std::chrono::system_clock::now();
-    tf.loadData(data);
+    tf.loadData(data,true);
     std::vector<Feature> features = tf.getFeatures(-1,0.1f);
     end = std::chrono::system_clock::now();
     qDebug() << "Time to get features: " << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() << "ms";
     qDebug() << "no. of features:" << features.size() << "\n";
 
+//    start = std::chrono::system_clock::now();
+//    features = tf.getFeatures(-1,0.2f);
+//    end = std::chrono::system_clock::now();
+//    qDebug() << "Time to get features: " << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() << "ms";
+//    qDebug() << "no. of features:" << features.size() << "\n";
+
+    qDebug() << "\n\n Partitioned features";
     start = std::chrono::system_clock::now();
-    features = tf.getFeatures(-1,0.2f);
+    std::vector<Feature> features1 = tf.getFeaturesPart(-1,0.1f);
     end = std::chrono::system_clock::now();
     qDebug() << "Time to get features: " << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() << "ms";
     qDebug() << "no. of features:" << features.size() << "\n";
+
+    assert(features1.size() == features.size());
+    for(int i = 0;i < features.size();i ++) {
+        assert(features[i].to == features1[i].to);
+    }
+
+//    start = std::chrono::system_clock::now();
+//    features = tf.getFeaturesPart(-1,0.2f);
+//    end = std::chrono::system_clock::now();
+//    qDebug() << "Time to get features: " << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() << "ms";
+//    qDebug() << "no. of features:" << features.size() << "\n";
 
 }
 

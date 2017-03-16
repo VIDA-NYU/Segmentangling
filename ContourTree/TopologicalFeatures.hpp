@@ -17,13 +17,19 @@ class TopologicalFeatures
 public:
     TopologicalFeatures();
 
-    void loadData(QString dataLocation);
+    void loadData(QString dataLocation, bool partition = false);
     std::vector<Feature> getFeatures(int topk = -1, float th = 0);
+    std::vector<Feature> getFeaturesPart(int topk = -1, float th = 0);
 
 public:
     ContourTreeData ctdata;
     std::vector<uint32_t> order;
     std::vector<float> wts;
+
+    // when completely partitioning branch decomposition
+    std::vector<std::vector<uint32_t> > featureArcs;
+    SimplifyCT sim;
+
 };
 
 }

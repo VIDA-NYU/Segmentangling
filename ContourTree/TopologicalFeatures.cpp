@@ -10,7 +10,7 @@ namespace contourtree {
 
 TopologicalFeatures::TopologicalFeatures() { }
 
-void TopologicalFeatures::loadData(QString dataLocation) {
+void TopologicalFeatures::loadData(QString dataLocation, bool partition) {
     ctdata = ContourTreeData();
     ctdata.loadBinFile(dataLocation);
 
@@ -26,11 +26,17 @@ void TopologicalFeatures::loadData(QString dataLocation) {
 
     order.resize(orderSize);
     wts.resize(orderSize);
+
     QString binFile = dataLocation + ".order.bin";
     std::ifstream bin(binFile.toStdString(), std::ios::binary);
     bin.read((char *)order.data(),order.size() * sizeof(uint32_t));
     bin.read((char *)wts.data(),wts.size() * sizeof(float));
     bin.close();
+
+    if(partition) {
+        sim.setInput(&ctdata);
+        sim.simplify(order,1,0,wts);
+    }
 }
 
 std::vector<Feature> TopologicalFeatures::getFeatures(int topk, float th) {
@@ -59,14 +65,59 @@ std::vector<Feature> TopologicalFeatures::getFeatures(int topk, float th) {
         f.to = ctdata.nodeVerts[b1.to];
 
         size_t bno = order[i];
-        QVector<size_t> queue;
-        queue << bno;
+        std::deque<size_t> queue;
+        queue.push_back(bno);
         while(queue.size() > 0) {
-            size_t b = queue.at(0);
-            queue.removeFirst();;
+            size_t b = queue.front();
+            queue.pop_front();
             if(b != bno && featureSet.contains(b)) {
                 // this cannot happen
                 assert(false);
+            }
+            Branch br = sim.branches.at(b);
+            f.arcs.insert(f.arcs.end(),br.arcs.data(), br.arcs.data()+br.arcs.size());
+            for(int i = 0;i < br.children.size();i ++) {
+                int bc = br.children.at(i);
+                queue.push_back(bc);
+            }
+        }
+        features.push_back(f);
+    }
+    return features;
+}
+
+std::vector<Feature> TopologicalFeatures::getFeaturesPart(int topk, float th) {
+    std::vector<Feature> features;
+
+    QSet<size_t> featureSet;
+    if(topk == -1) {
+        topk = 0;
+        for(int i = order.size() - 1;i >= 0 ;i --) {
+            if(wts[i] > th) {
+                topk ++;
+                featureSet << order[i];
+            } else {
+                break;
+            }
+        }
+    }
+    if(topk == 0) topk = 1;
+
+    for(int _i = 0;_i < topk;_i ++) {
+        size_t i = order.size() - _i - 1;
+        Branch b1 = sim.branches.at(order[i]);
+        Feature f;
+        f.from = ctdata.nodeVerts[b1.from];
+        f.to = ctdata.nodeVerts[b1.to];
+
+        size_t bno = order[i];
+        std::deque<size_t> queue;
+        queue.push_back(bno);
+        while(queue.size() > 0) {
+            size_t b = queue.front();
+            queue.pop_front();
+            if(b != bno && featureSet.contains(b)) {
+                continue;
             }
             Branch br = sim.branches.at(b);
             f.arcs.insert(f.arcs.end(),br.arcs.data(), br.arcs.data()+br.arcs.size());
