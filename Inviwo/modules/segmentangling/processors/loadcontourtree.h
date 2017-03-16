@@ -7,6 +7,7 @@
 #include <inviwo/core/ports/volumeport.h>
 #include <inviwo/core/properties/ordinalproperty.h>
 #include <modules/opengl/inviwoopengl.h>
+#include <inviwo/core/properties/stringproperty.h>
 
 #include "../../ContourTree/TopologicalFeatures.hpp"
 

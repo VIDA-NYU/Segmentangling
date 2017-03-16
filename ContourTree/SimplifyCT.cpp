@@ -278,7 +278,6 @@ void SimplifyCT::outputOrder(QString fileName) {
     float maxWt = wts.at(wts.size() - 1);
     if(maxWt == 0) maxWt = 1;
     for(int i = 0;i < wts.size();i ++) {
-        qDebug() << wts[i];
         wts[i] /= maxWt;
     }
 

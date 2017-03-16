@@ -12,6 +12,7 @@
 #include "TriMesh.hpp"
 #include "TopologicalFeatures.hpp"
 #include "HyperVolume.hpp"
+#include <fstream>
 
 using namespace contourtree;
 
@@ -227,20 +228,20 @@ void testMergeTree() {
 
 void preProcessing() {
     // the actual raw file without the extension. the extensions will be added as and when needed.
-    QString data = "../data/Fish_256";
+    QString data = "../data/toy";
 
     std::chrono::time_point<std::chrono::system_clock> start, end;
-//    start = std::chrono::system_clock::now();
-//    Grid3D grid(256,257,471);
-//    end = std::chrono::system_clock::now();
+    start = std::chrono::system_clock::now();
+    Grid3D grid(128,128,128);
+    end = std::chrono::system_clock::now();
 
-//    start = std::chrono::system_clock::now();
-//    grid.loadGrid(data + ".raw");
-//    MergeTree ct;
-//    ct.computeTree(&grid,JoinTree);
-//    end = std::chrono::system_clock::now();
-//    qDebug() << "Time to compute contour tree: " << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() << "ms\n";
-//    ct.output(data, JoinTree);
+    start = std::chrono::system_clock::now();
+    grid.loadGrid(data + ".raw");
+    MergeTree ct;
+    ct.computeTree(&grid,JoinTree);
+    end = std::chrono::system_clock::now();
+    qDebug() << "Time to compute contour tree: " << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() << "ms\n";
+    ct.output(data, JoinTree);
 
 
     // now simplify and store simplification hierarchy
@@ -250,9 +251,14 @@ void preProcessing() {
 
     SimplifyCT sim;
     sim.setInput(&ctdata);
-//    Persistence per(ctdata);
-    HyperVolume hv(ctdata,data + ".part.raw");
-    sim.simplify(&hv);
+    bool persistence = true;
+    SimFunction *simFn;
+    if(persistence) {
+        simFn = new Persistence(ctdata);
+    } else {
+        simFn = new HyperVolume(ctdata,data + ".part.raw");
+    }
+    sim.simplify(simFn);
     end = std::chrono::system_clock::now();
     qDebug() << "Time to simplify: " << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() << "ms\n";
 
@@ -262,7 +268,7 @@ void preProcessing() {
 
 void testApi() {
     // the actual raw file without the extension. the extensions will be added as and when needed.
-    QString data = "../data/Fish_256";
+    QString data = "../data/Mass-Scan-Slice-Data-1-256-256-256-cropped";
     TopologicalFeatures tf;
     std::chrono::time_point<std::chrono::system_clock> start, end;
     start = std::chrono::system_clock::now();
@@ -298,6 +304,62 @@ void testApi() {
 
 }
 
+void insert(QVector<int> &cx, QVector<int> &cy, QVector<int> &cz, int x,int y, int z) {
+    cx << x;
+    cy << y;
+    cz << z;
+}
+
+void generateData() {
+    int dimx = 128;
+    int dimy = 128;
+    int dimz = 128;
+
+    QVector<uint8_t> volume (dimx * dimy * dimz, 0);
+    QVector<int> centerx, centery, centerz;
+
+    insert(centerx,centery,centerz,30 ,30 , 30);
+    insert(centerx,centery,centerz,100,100, 30);
+    insert(centerx,centery,centerz,100,30 , 30);
+    insert(centerx,centery,centerz,30 ,100, 30);
+    insert(centerx,centery,centerz,30 ,30 , 100);
+    insert(centerx,centery,centerz,100,100, 100);
+    insert(centerx,centery,centerz,100,30 , 100);
+    insert(centerx,centery,centerz,30 ,100, 100);
+
+    // generate volume
+
+    int radius = 20;
+    int minval = 255;
+    for(int i = 0;i < centerx.size();i ++) {
+        int x = centerx[i];
+        int y = centery[i];
+        int z = centerz[i];
+
+        for(int xx = x - radius;xx < x + radius;xx ++) {
+            for(int yy = y - radius;yy < y + radius;yy ++) {
+                for(int zz = z - radius;zz < z + radius;zz ++) {
+                    float dist = std::sqrt((x - xx) * (x - xx) + (y - yy) * (y - yy) + (z - zz) * (z - zz));
+                    dist /= radius;
+                    dist = (dist > 1)?1:dist;
+                    int val = int((1 - dist) * 255);
+                    minval = std::min(minval,val);
+                    int in = xx + yy * dimx + zz * dimx * dimy;
+                    volume[in] = uint8_t(val);
+                }
+            }
+        }
+    }
+
+
+    std::ofstream of("../data/toy.raw",std::ios::binary);
+    of.write((char *)volume.data(),volume.size());
+    of.close();
+
+    qDebug() << "minval:" << minval;
+
+}
+
 int main(int argc, char *argv[])
 {
     QCoreApplication a(argc, argv);
@@ -307,6 +369,8 @@ int main(int argc, char *argv[])
 //    testMergeTree();
     preProcessing();
 //    testApi();
+
+//    generateData();
     exit(0);
     return a.exec();
 }
