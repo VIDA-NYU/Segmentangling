@@ -85,7 +85,7 @@ void LoadContourTree::process() {
         bufferData[0] = static_cast<uint32_t>(features.size());
         for (size_t i = 0; i < features.size(); ++i) {
             for (uint32_t j : features[i].arcs) {
-                bufferData[j] = i;
+                bufferData[j + 1] = i;
             }
         }
 
