@@ -31,7 +31,7 @@ const ProcessorInfo LoadContourTree::processorInfo_{
 LoadContourTree::LoadContourTree()
     : Processor()
     , _outport("identifierBuffer")
-    //, _contourTreeLevel("contourTreeLevel", "Contour Tree Level", 0.f, 0.f, 1.f)
+    , _contourTreeLevel("contourTreeLevel", "Contour Tree Level", 0.f, 0.f, 1.f)
     , _nFeatures("nFeatures", "Number of Features", 0, 0, 10000)
     , _contourTreeFile("contourTreeFile", "Contour Tree File")
     , _fileIsDirty(false)
@@ -39,8 +39,8 @@ LoadContourTree::LoadContourTree()
 {
     addPort(_outport, "VolumePortGroup");
 
-    //_contourTreeLevel.onChange([&](){ _dataIsDirty = true; });
-    //addProperty(_contourTreeLevel);
+    _contourTreeLevel.onChange([&](){ _dataIsDirty = true; });
+    addProperty(_contourTreeLevel);
 
     _nFeatures.onChange([&](){ _dataIsDirty = true; });
     addProperty(_nFeatures);
@@ -69,9 +69,9 @@ void LoadContourTree::process() {
         LogInfo("Created buffer " << info->ssbo);
 
 
-        //std::vector<contourtree::Feature> features = tf.getFeatures(-1, _contourTreeLevel);
+        std::vector<contourtree::Feature> features = tf.getFeatures(-1, _contourTreeLevel);
         //std::vector<contourtree::Feature> features = tf.getFeaturesPart(-1, _contourTreeLevel);
-        std::vector<contourtree::Feature> features = tf.getFeatures(_nFeatures, 0.f);
+        //std::vector<contourtree::Feature> features = tf.getFeatures(_nFeatures, 0.f);
         //std::vector<contourtree::Feature> features = tf.getFeaturesPart(_nFeatures, 0.f);
         LogInfo("Number of features: " << features.size());
         info->nFeatures = static_cast<uint32_t>(features.size());

@@ -26,7 +26,7 @@ protected:
     virtual void process() override;
     
     ContourOutport _outport;
-    //FloatProperty _contourTreeLevel;
+    FloatProperty _contourTreeLevel;
     IntProperty _nFeatures;
     StringProperty _contourTreeFile;
 
