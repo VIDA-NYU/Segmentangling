@@ -31,6 +31,9 @@ ContourFilter::ContourFilter()
     , _contour("identifierBuffer")
 {
     addPort(_contour, "ContourGroup");
+
+    this->dataFormat_ = DataUInt32::get();
+    //this->dataFormat_ = DataFloat32::get();
 }
 
 const ProcessorInfo ContourFilter::getProcessorInfo() const {
@@ -38,10 +41,19 @@ const ProcessorInfo ContourFilter::getProcessorInfo() const {
 }
 
 void ContourFilter::preProcess(TextureUnitContainer& cont) {
-    GLuint ssbo = *(_contour.getData());
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, _contour.getData()->ssbo);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, _contour.getData()->ssbo);
 
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, ssbo);
+    GLuint tex = volume_->getRepresentation<VolumeGL>()->getTexture()->getID();
+    glBindTexture(GL_TEXTURE_3D, tex);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glBindTexture(GL_TEXTURE_3D, 0);
+}
+
+void ContourFilter::postProcess() {
+    volume_->dataMap_.dataRange = dvec2(0, _contour.getData()->nFeatures);
+    volume_->dataMap_.valueRange = dvec2(0, _contour.getData()->nFeatures);
 }
 
 }  // namespace

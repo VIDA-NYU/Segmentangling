@@ -39,6 +39,7 @@
 #include "utils/raycastgeometry.glsl"
 
 layout (std430, binding = 0) buffer Contour {
+    uint nFeatures;
     uint values[];
 } contour;
 

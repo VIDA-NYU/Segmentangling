@@ -154,6 +154,9 @@ void SegmentationIdRaycaster::process() {
         }
     }
 
+    const auto& contourInformation = _contour.getData();
+    _id.setMaxValue(contourInformation->nFeatures - 1);
+
     if (!_loadedVolume) return;
     if (!_loadedVolume->hasRepresentation<VolumeGL>()) {
         LogWarn("No GL rep !!!");
@@ -173,9 +176,8 @@ void SegmentationIdRaycaster::process() {
     utilgl::bindAndSetUniforms(_shader, units, *_loadedVolume, "volume");
     utilgl::bindAndSetUniforms(_shader, units, *_loadedSegmentationVolume, "segmentationVolume");
 
-    GLuint ssbo = *(_contour.getData());
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, ssbo);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, contourInformation->ssbo);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, contourInformation->ssbo);
 
     utilgl::bindAndSetUniforms(_shader, units, _transferFunction);
     utilgl::bindAndSetUniforms(_shader, units, _entryPort, ImageType::ColorDepthPicking);

@@ -7,6 +7,8 @@
 #include <inviwo/core/ports/volumeport.h>
 #include <inviwo/core/properties/ordinalproperty.h>
 #include <modules/opengl/inviwoopengl.h>
+#include <inviwo/core/properties/stringproperty.h>
+#include <modules/segmentangling/common.h>
 
 #include "../../ContourTree/TopologicalFeatures.hpp"
 
@@ -23,12 +25,12 @@ public:
 protected:
     virtual void process() override;
     
-    DataOutport<GLuint> _outport;
-    FloatProperty _contourTreeLevel;
+    ContourOutport _outport;
+    //FloatProperty _contourTreeLevel;
+    IntProperty _nFeatures;
     StringProperty _contourTreeFile;
 
     contourtree::TopologicalFeatures tf;
-
 
     bool _fileIsDirty;
     bool _dataIsDirty;

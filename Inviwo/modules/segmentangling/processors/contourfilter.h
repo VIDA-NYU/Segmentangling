@@ -9,6 +9,8 @@
 #include <modules/opengl/inviwoopengl.h>
 #include <modules/basegl/processors/volumeprocessing/volumeglprocessor.h>
 
+#include <modules/segmentangling/common.h>
+
 #include "../../ContourTree/TopologicalFeatures.hpp"
 
 namespace inviwo {
@@ -23,8 +25,9 @@ public:
 
 protected:
     virtual void preProcess(TextureUnitContainer &cont) override;
+    virtual void postProcess() override;
     
-    DataInport<GLuint> _contour;
+    ContourInport _contour;
 };
 
 } // namespace

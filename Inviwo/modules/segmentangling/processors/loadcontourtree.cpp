@@ -31,15 +31,19 @@ const ProcessorInfo LoadContourTree::processorInfo_{
 LoadContourTree::LoadContourTree()
     : Processor()
     , _outport("identifierBuffer")
-    , _contourTreeLevel("contourTreeLevel", "Contour Tree Level", 0.f, 0.f, 1.f)
+    //, _contourTreeLevel("contourTreeLevel", "Contour Tree Level", 0.f, 0.f, 1.f)
+    , _nFeatures("nFeatures", "Number of Features", 0, 0, 10000)
     , _contourTreeFile("contourTreeFile", "Contour Tree File")
     , _fileIsDirty(false)
     , _dataIsDirty(false)
 {
     addPort(_outport, "VolumePortGroup");
 
-    _contourTreeLevel.onChange([&](){ _dataIsDirty = true; });
-    addProperty(_contourTreeLevel);
+    //_contourTreeLevel.onChange([&](){ _dataIsDirty = true; });
+    //addProperty(_contourTreeLevel);
+
+    _nFeatures.onChange([&](){ _dataIsDirty = true; });
+    addProperty(_nFeatures);
 
     _contourTreeFile.onChange([&]() { _fileIsDirty = true; });
     addProperty(_contourTreeFile);
@@ -52,39 +56,40 @@ const ProcessorInfo LoadContourTree::getProcessorInfo() const {
 void LoadContourTree::process() {
     if (_fileIsDirty) {
         std::string file = _contourTreeFile;
-        tf.loadData(QString::fromStdString(file));
+        tf = contourtree::TopologicalFeatures();
+        tf.loadData(QString::fromStdString(file), true);
         _dataIsDirty = true;
         _fileIsDirty = false;
     }
 
 
     if (_dataIsDirty) {
-        GLuint* buffer = new GLuint;
-        glGenBuffers(1, buffer);
-        LogInfo("Created buffer " << *buffer);
+        ContourInformation* info = new ContourInformation;
+        glGenBuffers(1, &info->ssbo);
+        LogInfo("Created buffer " << info->ssbo);
 
 
-        std::vector<contourtree::Feature> features = tf.getFeatures(-1, _contourTreeLevel);
+        //std::vector<contourtree::Feature> features = tf.getFeatures(-1, _contourTreeLevel);
+        //std::vector<contourtree::Feature> features = tf.getFeaturesPart(-1, _contourTreeLevel);
+        std::vector<contourtree::Feature> features = tf.getFeatures(_nFeatures, 0.f);
+        //std::vector<contourtree::Feature> features = tf.getFeaturesPart(_nFeatures, 0.f);
+        LogInfo("Number of features: " << features.size());
+        info->nFeatures = static_cast<uint32_t>(features.size());
 
-        contourtree::Feature& f = *std::max_element(
-            features.begin(),
-            features.end(),
-            [](const contourtree::Feature& lhs, const contourtree::Feature& rhs) {
-                return *std::max_element(lhs.arcs.begin(), lhs.arcs.end()) < *std::max_element(rhs.arcs.begin(), rhs.arcs.end());
-            }
-        );
+        uint32_t size = tf.ctdata.noArcs;
 
-        uint32_t size = *std::max_element(f.arcs.begin(), f.arcs.end());
-
-        // The buffer contains a linearized map from voxel identifier -> feature number
-        std::vector<uint32_t> bufferData(size + 1, 0);
+        // Buffer contents:
+        // [0]: number of features
+        // [...]: A linearized map from voxel identifier -> feature number
+        std::vector<uint32_t> bufferData(size + 1 + 1, -1);
+        bufferData[0] = static_cast<uint32_t>(features.size());
         for (size_t i = 0; i < features.size(); ++i) {
             for (uint32_t j : features[i].arcs) {
                 bufferData[j] = i;
             }
         }
 
-        glBindBuffer(GL_SHADER_STORAGE_BUFFER, *buffer);
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, info->ssbo);
         glBufferData(
             GL_SHADER_STORAGE_BUFFER,
             sizeof(uint32_t) * bufferData.size(),
@@ -92,7 +97,7 @@ void LoadContourTree::process() {
             GL_DYNAMIC_COPY
         );
 
-        _outport.setData(buffer);
+        _outport.setData(info);
 
         _dataIsDirty = false;
     }

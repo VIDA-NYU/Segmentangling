@@ -16,6 +16,7 @@
 #include <inviwo/core/ports/imageport.h>
 #include <inviwo/core/ports/volumeport.h>
 #include <modules/opengl/shader/shader.h>
+#include <modules/segmentangling/common.h>
 
 namespace inviwo {
 
@@ -40,7 +41,7 @@ protected:
     Shader _shader;
     VolumeInport _volumePort;
     VolumeInport _segmentationPort;
-    DataInport<GLuint> _contour;
+    ContourInport _contour;
     std::shared_ptr<const Volume> _loadedVolume;
     std::shared_ptr<const Volume> _loadedSegmentationVolume;
     ImageInport _entryPort;
