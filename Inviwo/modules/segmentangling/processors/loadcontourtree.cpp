@@ -18,6 +18,11 @@
 
 #include <algorithm>
 
+namespace {
+    const int ModeFeatures = 0;
+    const int ModeThreshold = 1;
+} // namespace
+
 namespace inviwo {
 
 const ProcessorInfo LoadContourTree::processorInfo_{
@@ -31,6 +36,7 @@ const ProcessorInfo LoadContourTree::processorInfo_{
 LoadContourTree::LoadContourTree()
     : Processor()
     , _outport("identifierBuffer")
+    , _mode("mode", "Selection mode")
     , _contourTreeLevel("contourTreeLevel", "Contour Tree Level", 0.f, 0.f, 1.f)
     , _nFeatures("nFeatures", "Number of Features", 0, 0, 10000)
     , _contourTreeFile("contourTreeFile", "Contour Tree File")
@@ -38,6 +44,11 @@ LoadContourTree::LoadContourTree()
     , _dataIsDirty(false)
 {
     addPort(_outport, "VolumePortGroup");
+
+    _mode.addOption("nFeatures", "Number of features", ModeFeatures);
+    _mode.addOption("threshold", "Threshold", ModeThreshold);
+    _mode.onChange([&]() { _dataIsDirty = true; });
+    addProperty(_mode);
 
     _contourTreeLevel.onChange([&](){ _dataIsDirty = true; });
     addProperty(_contourTreeLevel);
@@ -56,8 +67,8 @@ const ProcessorInfo LoadContourTree::getProcessorInfo() const {
 void LoadContourTree::process() {
     if (_fileIsDirty) {
         std::string file = _contourTreeFile;
-        tf = contourtree::TopologicalFeatures();
-        tf.loadData(QString::fromStdString(file), true);
+        _topologicalFeatures = contourtree::TopologicalFeatures();
+        _topologicalFeatures.loadData(QString::fromStdString(file), true);
         _dataIsDirty = true;
         _fileIsDirty = false;
     }
@@ -68,24 +79,30 @@ void LoadContourTree::process() {
         glGenBuffers(1, &info->ssbo);
         LogInfo("Created buffer " << info->ssbo);
 
-
-        std::vector<contourtree::Feature> features = tf.getFeatures(-1, _contourTreeLevel);
-        //std::vector<contourtree::Feature> features = tf.getFeaturesPart(-1, _contourTreeLevel);
-        //std::vector<contourtree::Feature> features = tf.getFeatures(_nFeatures, 0.f);
-        //std::vector<contourtree::Feature> features = tf.getFeaturesPart(_nFeatures, 0.f);
+        std::vector<contourtree::Feature> features = [m = _mode.get(), this]() {
+            switch (m) {
+                case ModeFeatures:
+                    return _topologicalFeatures.getFeatures(_nFeatures, 0.f);
+                case ModeThreshold:
+                    return _topologicalFeatures.getFeatures(-1, _contourTreeLevel);
+                default:
+                    assert(false);
+                    return std::vector<contourtree::Feature>();
+            }
+        }();
         LogInfo("Number of features: " << features.size());
         info->nFeatures = static_cast<uint32_t>(features.size());
 
-        uint32_t size = tf.ctdata.noArcs;
+        uint32_t size = _topologicalFeatures.ctdata.noArcs;
 
         // Buffer contents:
         // [0]: number of features
         // [...]: A linearized map from voxel identifier -> feature number
-        std::vector<uint32_t> bufferData(size + 1 + 1, -1);
+        std::vector<uint32_t> bufferData(size + 1 + 1, static_cast<uint32_t>(-1));
         bufferData[0] = static_cast<uint32_t>(features.size());
         for (size_t i = 0; i < features.size(); ++i) {
             for (uint32_t j : features[i].arcs) {
-                bufferData[j + 1] = i;
+                bufferData[j + 1] = static_cast<uint32_t>(i);
             }
         }
 

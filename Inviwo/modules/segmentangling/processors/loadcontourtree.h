@@ -26,11 +26,13 @@ protected:
     virtual void process() override;
     
     ContourOutport _outport;
+   
+    OptionPropertyInt _mode;
     FloatProperty _contourTreeLevel;
     IntProperty _nFeatures;
     StringProperty _contourTreeFile;
 
-    contourtree::TopologicalFeatures tf;
+    contourtree::TopologicalFeatures _topologicalFeatures;
 
     bool _fileIsDirty;
     bool _dataIsDirty;
