@@ -6,6 +6,7 @@
 #include <inviwo/core/properties/ordinalproperty.h>
 #include <inviwo/core/properties/buttonproperty.h>
 #include <inviwo/core/properties/optionproperty.h>
+#include <inviwo/core/properties/eventproperty.h>
 
 #include <modules/segmentangling/common.h>
 
@@ -23,6 +24,10 @@ public:
 protected:
     virtual void process() override;
 
+    void selectVolume(Event* e, int volume);
+    void addVolumeModification(Event* e);
+    void removeVolumeModification(Event* e);
+
     void logStatus(std::string msg) const;
 
     VolumeInport _inport;
@@ -39,6 +44,31 @@ protected:
     ButtonProperty _modify;
 
     IntProperty _nVolumes;
+
+    EventProperty _selectVolume1Event;
+    EventProperty _selectVolume2Event;
+    EventProperty _selectVolume3Event;
+    //EventProperty _selectVolume4Event;
+    //EventProperty _selectVolume5Event;
+    //EventProperty _selectVolume6Event;
+    //EventProperty _selectVolume7Event;
+    //EventProperty _selectVolume8Event;
+    //EventProperty _selectVolume9Event;
+    //EventProperty _selectVolume10Event;
+    //EventProperty _selectVolume11Event;
+    //EventProperty _selectVolume12Event;
+    //EventProperty _selectVolume13Event;
+    //EventProperty _selectVolume14Event;
+    //EventProperty _selectVolume15Event;
+
+    EventProperty _addVolumeEvent;
+    EventProperty _removeVolumeEvent;
+
+    EventProperty _trigger;
+
+
+
+
 
     std::vector<uint32_t> _mappingData;
     

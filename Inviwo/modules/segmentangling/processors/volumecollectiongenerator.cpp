@@ -3,6 +3,8 @@
 #include <modules/opengl/shader/shaderutils.h>
 #include <modules/opengl/volume/volumegl.h>
 
+#include <inviwo/core/interaction/events/keyboardkeys.h>
+
 namespace {
     static const int ModificationAdd = 0;
     static const int ModificationRemove = 1;
@@ -41,7 +43,13 @@ VolumeCollectionGenerator::VolumeCollectionGenerator()
     , _modification("modification", "Modification")
     , _featureToModify("featureToModify", "Feature ID to Modify", 0, 0, 1000)
     , _modify("modify", "Modify")
-    , _nVolumes("nVolumes", "Number of Volumes", 1, 0, 1000)
+    , _nVolumes("nVolumes", "Number of Volumes", 15, 1, 1000)
+    , _selectVolume1Event("_selectVolume1Event", "Select Volume 1", [this](Event* e) { selectVolume(e, 0); }, IvwKey::Num1, KeyState::Press)
+    , _selectVolume2Event("_selectVolume3Event", "Select Volume 2", [this](Event* e) { selectVolume(e, 1); }, IvwKey::Num2, KeyState::Press)
+    , _selectVolume3Event("_selectVolume4Event", "Select Volume 3", [this](Event* e) { selectVolume(e, 2); }, IvwKey::Num3, KeyState::Press)
+    , _addVolumeEvent("_addVolumeEvent", "Add Volume", [this](Event* e) { addVolumeModification(e); }, IvwKey::F1, KeyState::Press)
+    , _removeVolumeEvent("_removeVolumeEvent", "Remove Volume", [this](Event* e) { removeVolumeModification(e); }, IvwKey::F2, KeyState::Press)
+    , _trigger("_trigger", "Trigger", [this](Event* e) { _modify.pressButton(); e->markAsUsed(); }, IvwKey::Space, KeyState::Press)
     , _information(nullptr)
     , _dirty{ false, false }
 {
@@ -51,6 +59,15 @@ VolumeCollectionGenerator::VolumeCollectionGenerator()
     addPort(_outportContour);
 
     //this->dataFormat_ = DataUInt8::get();
+
+    addProperty(_selectVolume1Event);
+    addProperty(_selectVolume2Event);
+    addProperty(_selectVolume3Event);
+
+    addProperty(_addVolumeEvent);
+    addProperty(_removeVolumeEvent);
+    
+    addProperty(_trigger);
 
     addProperty(_currentVolume);
 
@@ -149,6 +166,21 @@ void VolumeCollectionGenerator::process() {
     _information->nFeatures = _nVolumes + 1;
 
     _outportContour.setData(_information);
+}
+
+void VolumeCollectionGenerator::selectVolume(Event* e, int volume) {
+    _currentVolume = volume;
+    e->markAsUsed();
+}
+
+void VolumeCollectionGenerator::addVolumeModification(Event* e) {
+    _modification.setSelectedValue(ModificationAdd);
+    e->markAsUsed();
+}
+
+void VolumeCollectionGenerator::removeVolumeModification(Event* e) {
+    _modification.setSelectedValue(ModificationRemove);
+    e->markAsUsed();
 }
 
 }  // namespace
