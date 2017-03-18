@@ -13,6 +13,7 @@
 #include "TopologicalFeatures.hpp"
 #include "HyperVolume.hpp"
 #include <fstream>
+#include <cmath>
 
 using namespace contourtree;
 
@@ -226,9 +227,9 @@ void testMergeTree() {
     qDebug() << "done!";
 }
 
-void preProcessing() {
+void preProcessing(bool mini = false) {
     // the actual raw file without the extension. the extensions will be added as and when needed.
-    QString data = "../data/toy";
+    QString data = "../data/toy-mini";
 
     std::chrono::time_point<std::chrono::system_clock> start, end;
     start = std::chrono::system_clock::now();
@@ -238,10 +239,14 @@ void preProcessing() {
     start = std::chrono::system_clock::now();
     grid.loadGrid(data + ".raw");
     MergeTree ct;
-    ct.computeTree(&grid,JoinTree);
+    contourtree::TreeType tree = JoinTree;
+    if(mini) {
+        tree = SplitTree;
+    }
+    ct.computeTree(&grid,tree);
     end = std::chrono::system_clock::now();
     qDebug() << "Time to compute contour tree: " << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() << "ms\n";
-    ct.output(data, JoinTree);
+    ct.output(data, tree);
 
 
     // now simplify and store simplification hierarchy
@@ -310,12 +315,17 @@ void insert(QVector<int> &cx, QVector<int> &cy, QVector<int> &cz, int x,int y, i
     cz << z;
 }
 
-void generateData() {
+void generateData(bool mini = false) {
     int dimx = 128;
     int dimy = 128;
     int dimz = 128;
 
-    QVector<uint8_t> volume (dimx * dimy * dimz, 0);
+    std::vector<uint8_t> volume;
+    if(mini) {
+        volume.resize(dimx * dimy * dimz, 255);
+    } else {
+        volume.resize(dimx * dimy * dimz, 0);
+    }
     QVector<int> centerx, centery, centerz;
 
     insert(centerx,centery,centerz,30 ,30 , 30);
@@ -330,7 +340,6 @@ void generateData() {
     // generate volume
 
     int radius = 20;
-    int minval = 255;
     for(int i = 0;i < centerx.size();i ++) {
         int x = centerx[i];
         int y = centery[i];
@@ -343,8 +352,10 @@ void generateData() {
                     dist /= radius;
                     dist = (dist > 1)?1:dist;
                     int val = int((1 - dist) * 255);
-                    minval = std::min(minval,val);
                     int in = xx + yy * dimx + zz * dimx * dimy;
+                    if(mini) {
+                        val = 255 - val;
+                    }
                     volume[in] = uint8_t(val);
                 }
             }
@@ -352,12 +363,57 @@ void generateData() {
     }
 
 
-    std::ofstream of("../data/toy.raw",std::ios::binary);
+    std::ofstream of;
+    if(mini) {
+        of.open("../data/toy-mini.raw",std::ios::binary);
+    } else {
+        of.open("../data/toy.raw",std::ios::binary);
+    }
     of.write((char *)volume.data(),volume.size());
     of.close();
+}
 
-    qDebug() << "minval:" << minval;
+void testFeatures() {
+    // the actual raw file without the extension. the extensions will be added as and when needed.
+    QString data = "../data/toy-mini";
+    TopologicalFeatures tf;
+    std::chrono::time_point<std::chrono::system_clock> start, end;
+    start = std::chrono::system_clock::now();
+    tf.loadData(data,true);
+    std::vector<Feature> features = tf.getFeatures(8,0);
+//    std::vector<Feature> features = tf.getFeaturesPart(10,0);
+    end = std::chrono::system_clock::now();
+    qDebug() << "Time to get features: " << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() << "ms";
+    qDebug() << "no. of features:" << features.size() << "\n";
 
+    // read part file
+    int dimx = 128;
+    int dimy = 128;
+    int dimz = 128;
+
+    qDebug() << "reading part";
+    QVector<uint32_t> part(dimx * dimy * dimz);
+    std::ifstream ip((data + ".part.raw").toStdString(), std::ios::binary);
+    ip.read((char *)(part.data()), part.size() * sizeof(uint32_t));
+    ip.close();
+
+    qDebug() << "mapping features to arcs";
+    std::vector<uint32_t> arcMap(tf.ctdata.noArcs, 0);
+    for(int i = 0;i < features.size();i ++) {
+        for(int ano: features[i].arcs) {
+            arcMap[ano] = (i + 1);
+        }
+    }
+
+    qDebug() << "mapping voxels to features";
+    for(int i = 0;i < part.size();i ++) {
+        part[i] = arcMap[part[i]];
+    }
+
+    qDebug() << "writing features";
+    std::ofstream op((data + ".test-features.raw").toStdString(), std::ios::binary);
+    op.write((char *)(part.data()), part.size() * sizeof(uint32_t));
+    ip.close();
 }
 
 int main(int argc, char *argv[])
@@ -367,10 +423,11 @@ int main(int argc, char *argv[])
 //    testSimplification3();
 //    testPriorityQueue();
 //    testMergeTree();
-    preProcessing();
+//    preProcessing(true);
 //    testApi();
 
-//    generateData();
+//    generateData(true);
+    testFeatures();
     exit(0);
     return a.exec();
 }

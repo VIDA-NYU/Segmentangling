@@ -25,13 +25,14 @@ void MergeTree::computeTree(ScalarFunction* data, TreeType type) {
     orderVertices();
     switch(type) {
     case ContourTree:
-        qDebug() << "Not supported";
+        computeJoinTree();
+        nodes = DisjointSets<int64_t>(noVertices);
+        computeSplitTree();
         assert(false);
         break;
 
     case SplitTree:
-        qDebug() << "Not supported";
-        assert(false);
+        computeSplitTree();
         break;
 
     case JoinTree:
@@ -96,6 +97,30 @@ void MergeTree::computeJoinTree() {
         newVertex = true;
     } else {
         criticalPts[sv[in]] = MINIMUM;
+    }
+    newRoot = in;
+}
+
+
+void MergeTree::computeSplitTree() {
+    qDebug() << "computing split tree";
+    int64_t ct = 0;
+    for(int64_t i = 0;i < noVertices; i ++) {
+        if(ct % 1000000 == 0) {
+            qDebug() << "processing vertex " <<  ct << " of " << noVertices;
+        }
+        ct ++;
+
+        int64_t v = sv[i];
+        criticalPts[v] = REGULAR;
+        processVertexSplit(v);
+    }
+    int64_t in = noVertices - 1;
+    if(criticalPts[sv[in]] == SADDLE) {
+        // add a new vertex
+        newVertex = true;
+    } else {
+        criticalPts[sv[in]] = MAXIMUM;
     }
     newRoot = in;
 }
@@ -279,6 +304,40 @@ void MergeTree::processVertex(int64_t v) {
             int64_t to = cpMap[comp];
             int64_t from = v;
             prev[to] = from;
+            nodes.merge(comp, v);
+        }
+        int64_t comp = nodes.find(v);
+        cpMap[comp] = v;
+    }
+}
+
+void MergeTree::processVertexSplit(int64_t v) {
+    int starct = data->getStar(v, star);
+    if(starct == 0) {
+        return;
+    }
+    set.clear();
+    for(int x = 0;x < starct; x++) {
+        int64_t tin = star[x];
+        if(!(data->lessThan(v,tin))) {
+            // lowerLink
+            int64_t comp = nodes.find(tin);
+            set << comp;
+        }
+    }
+    if(set.size() == 0) {
+        // Minimum
+        int64_t comp = nodes.find(v);
+        cpMap[comp] = v;
+        criticalPts[v] = MINIMUM;
+    } else {
+        if(set.size() > 1) {
+            criticalPts[v] = SADDLE;
+        }
+        foreach(int64_t comp, set) {
+            int64_t from = cpMap[comp];
+            int64_t to = v;
+            next[from] = to;
             nodes.merge(comp, v);
         }
         int64_t comp = nodes.find(v);

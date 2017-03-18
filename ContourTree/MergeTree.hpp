@@ -26,12 +26,14 @@ public:
 
     void computeTree(ScalarFunction* data, TreeType type);
     void computeJoinTree();
+    void computeSplitTree();
     void output(QString fileName, TreeType tree);
 
 protected:
     void setupData();
     void orderVertices();
     void processVertex(int64_t v);
+    void processVertexSplit(int64_t v);
 
 public:
     ScalarFunction* data;

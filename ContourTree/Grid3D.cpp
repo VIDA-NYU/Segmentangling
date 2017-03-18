@@ -22,7 +22,6 @@ int Grid3D::getVertexCount() {
 }
 
 int Grid3D::getStar(int64_t v, QVector<int64_t> &star) {
-    star.clear();
     int z = v / (dimx * dimy);
     int rem = v % (dimx * dimy);
     int y = rem / dimx;
