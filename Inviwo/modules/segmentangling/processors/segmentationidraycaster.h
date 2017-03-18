@@ -58,6 +58,7 @@ protected:
 
     VolumeIndicatorProperty _positionIndicator;
 
+    BoolProperty _filterById;
     IntProperty _id;
 
     EventProperty _toggleShading;

@@ -38,6 +38,8 @@
 #include "utils/shading.glsl"
 #include "utils/raycastgeometry.glsl"
 
+#include "common.hglsl"
+
 layout (std430, binding = 0) buffer Contour {
     uint nFeatures;
     uint values[];
@@ -73,6 +75,7 @@ uniform RaycastingParameters raycaster;
 
 uniform int channel;
 
+uniform bool filterById;
 uniform int id;
 
 #define ERT_THRESHOLD 0.99  // threshold for early ray termination
@@ -115,18 +118,31 @@ vec4 rayTraversal(vec3 entryPoint, vec3 exitPoint, vec2 texCoords, float backgro
     while (t < tEnd) {
         samplePos = entryPoint + t * rayDirection;
 
-        // vec4 segVoxel = getNormalizedVoxel(segmentationVolume, segmentationVolumeParameters, samplePos);
-        uint segVoxel = texture(segmentationVolume, samplePos).r;
-
+        const uint segVoxel = texture(segmentationVolume, samplePos).r;
         voxel = getNormalizedVoxel(volume, volumeParameters, samplePos);
-
-        // voxel = vec4(segVoxel.r);
 
         color = vec4(0.0);
 
-        if (contour.values[segVoxel] == id) {
-            color = APPLY_CHANNEL_CLASSIFICATION(transferFunction, voxel, channel);
-            // color = vec4(1.0);
+        const uint feature = contour.values[segVoxel];
+
+        if (filterById) {
+            if (feature == id) {
+                color = APPLY_CHANNEL_CLASSIFICATION(transferFunction, voxel, channel);
+
+                const float normFeature = float(feature) / float(contour.nFeatures);
+
+                color.rgb = colormap(normFeature).rgb;
+            }
+        }
+        else {
+            if (feature != -1) {
+                color = APPLY_CHANNEL_CLASSIFICATION(transferFunction, voxel, channel);
+
+                const float normFeature = float(feature + 1) / float(contour.nFeatures);
+
+                color.rgb = colormap(normFeature).rgb;
+            }
+
         }
 
         // if (segVoxel.r == 100024) {
