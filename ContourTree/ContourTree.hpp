@@ -34,8 +34,10 @@ public:
     const MergeTree * tree;
     std::vector<Node> nodesJoin;
     std::vector<Node> nodesSplit;
+    std::vector<Node> ctNodes;
+    std::vector<uint32_t> arcMap;
+
     int64_t nv;
-    int64_t noarcs;
 };
 
 }

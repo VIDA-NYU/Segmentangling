@@ -56,7 +56,7 @@ unsigned char Grid3D::getFunctionValue(int64_t v) {
 }
 
 void Grid3D::loadGrid(QString fileName) {
-    std::ifstream ip(fileName.toStdString());
+    std::ifstream ip(fileName.toStdString(), std::ios::binary);
     this->fnVals.resize(nv);
     ip.read((char *)fnVals.data(),nv);
     ip.close();

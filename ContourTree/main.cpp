@@ -229,25 +229,25 @@ void testMergeTree() {
 
 void preProcessing() {
     // the actual raw file without the extension. the extensions will be added as and when needed.
-    QString data = "../data/Fish_256";
+    QString data = "../data/ContourTree/Fish_256";
 
     std::chrono::time_point<std::chrono::system_clock> start, end;
-    start = std::chrono::system_clock::now();
-    Grid3D grid(256,257,471);
-    end = std::chrono::system_clock::now();
+//    start = std::chrono::system_clock::now();
+//    Grid3D grid(256,257,471);
+//    end = std::chrono::system_clock::now();
 
-    start = std::chrono::system_clock::now();
-    grid.loadGrid(data + ".raw");
-    MergeTree ct;
-//    contourtree::TreeType tree = TypeJoinTree;
-//    if(mini) {
-//        tree = TypeSplitTree;
-//    }
-    contourtree::TreeType tree = TypeContourTree;
-    ct.computeTree(&grid,tree);
-    end = std::chrono::system_clock::now();
-    qDebug() << "Time to compute contour tree: " << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() << "ms\n";
-    ct.output(data, tree);
+//    start = std::chrono::system_clock::now();
+//    grid.loadGrid(data + ".raw");
+//    MergeTree ct;
+////    contourtree::TreeType tree = TypeJoinTree;
+////    if(mini) {
+////        tree = TypeSplitTree;
+////    }
+//    contourtree::TreeType tree = TypeContourTree;
+//    ct.computeTree(&grid,tree);
+//    end = std::chrono::system_clock::now();
+//    qDebug() << "Time to compute contour tree: " << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() << "ms\n";
+//    ct.output(data, tree);
 
 
     // now simplify and store simplification hierarchy
@@ -257,7 +257,7 @@ void preProcessing() {
 
     SimplifyCT sim;
     sim.setInput(&ctdata);
-    bool persistence = true;
+    bool persistence = false;
     SimFunction *simFn;
     if(persistence) {
         simFn = new Persistence(ctdata);
@@ -376,21 +376,21 @@ void generateData(bool mini = false) {
 
 void testFeatures() {
     // the actual raw file without the extension. the extensions will be added as and when needed.
-    QString data = "../data/toy-mini";
+    QString data = "../data/ContourTree/Fish_256";
     TopologicalFeatures tf;
     std::chrono::time_point<std::chrono::system_clock> start, end;
     start = std::chrono::system_clock::now();
     tf.loadData(data,true);
-    std::vector<Feature> features = tf.getFeatures(8,0);
+    std::vector<Feature> features = tf.getFeatures(20,0);
 //    std::vector<Feature> features = tf.getFeaturesPart(10,0);
     end = std::chrono::system_clock::now();
     qDebug() << "Time to get features: " << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() << "ms";
     qDebug() << "no. of features:" << features.size() << "\n";
 
     // read part file
-    int dimx = 128;
-    int dimy = 128;
-    int dimz = 128;
+    int dimx = 256;
+    int dimy = 257;
+    int dimz = 471;
 
     qDebug() << "reading part";
     QVector<uint32_t> part(dimx * dimy * dimz);
@@ -424,11 +424,11 @@ int main(int argc, char *argv[])
 //    testSimplification3();
 //    testPriorityQueue();
 //    testMergeTree();
-    preProcessing();
+//    preProcessing();
 //    testApi();
 
 //    generateData(true);
-//    testFeatures();
+    testFeatures();
     exit(0);
     return a.exec();
 }

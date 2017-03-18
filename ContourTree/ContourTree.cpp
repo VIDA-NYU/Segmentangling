@@ -4,23 +4,26 @@
 #include <deque>
 #include <cassert>
 #include <QDebug>
+#include <fstream>
+#include <QFile>
+#include <QTextStream>
 
 namespace contourtree {
 
-ContourTree::ContourTree() {
-    noarcs = 0;
-}
+ContourTree::ContourTree() {}
 
 void ContourTree::setup(const MergeTree *tree) {
+    qDebug() << "setting up merge process";
     this->tree = tree;
     nv = tree->data->getVertexCount();
     nodesJoin.resize(nv);
     nodesSplit.resize(nv);
-
+    ctNodes.resize(nv);
     for(int64_t i = 0;i < nv;i ++) {
         // init
         nodesJoin[i].v = i;
         nodesSplit[i].v = i;
+        ctNodes[i].v = i;
 
         // add join arcs
         int64_t to = i;
@@ -41,6 +44,7 @@ void ContourTree::setup(const MergeTree *tree) {
 }
 
 void ContourTree::computeCT() {
+    qDebug() << "merging join and split trees";
     std::deque<int64_t> q;
     for(int64_t v = 0;v < nv;v ++) {
         Node &jn = nodesJoin[v];
@@ -98,7 +102,86 @@ void ContourTree::computeCT() {
 }
 
 void ContourTree::output(QString fileName) {
+    qDebug() << "removing deg-2 nodes and computing segmentation";
 
+    // saving some memory
+    nodesJoin.clear();
+    nodesJoin.shrink_to_fit();
+    nodesSplit.clear();
+    nodesSplit.shrink_to_fit();
+
+    std::vector<int64_t> nodeids;
+    std::vector<unsigned char> nodefns;
+    std::vector<char> nodeTypes;
+    std::vector<int64_t> arcs;
+
+    arcMap.resize(nv, -1);
+
+    int arcNo = 0;
+    for(int64_t i = 0;i < nv;i ++) {
+        // go in sorted order
+        int64_t v = tree->sv[i];
+        // process only regular vertices
+        if(ctNodes[v].prev.size() == 1 && ctNodes[v].next.size() == 1) {
+            continue;
+        }
+        nodeids.push_back(v);
+        nodefns.push_back(tree->data->getFunctionValue(v));
+        nodeTypes.push_back(tree->criticalPts[v]);
+
+        // create an arc for which this critical point is the source of the arc
+        arcMap[v] = arcNo;
+        // traverse up for each of its arcs
+
+        int64_t from = v;
+        for(int i = 0;i < ctNodes[v].next.size();i ++) {
+            int64_t vv = ctNodes[v].next[i];
+            while(ctNodes[vv].prev.size() == 1 && ctNodes[vv].next.size() == 1) {
+                // regular
+                arcMap[vv] = arcNo;
+                vv = ctNodes[vv].next[0];
+            }
+            arcMap[vv] = arcNo;
+            int64_t to = vv;
+            // create arc (from, to)
+            arcs.push_back(from);
+            arcs.push_back(to);
+            arcNo ++;
+        }
+    }
+
+    qDebug() << "sanity testing segementation";
+    for(uint32_t ano: arcMap) {
+        assert(ano != (uint32_t)(-1));
+    }
+
+    // write meta data
+    qDebug() << "Writing meta data";
+    {
+        QFile pr(fileName + ".rg.dat");
+        if(!pr.open(QFile::WriteOnly | QIODevice::Text)) {
+            qDebug() << "could not write to file" << fileName + ".rg.dat";
+        }
+        QTextStream text(&pr);
+        text << nodeids.size() << "\n";
+        text << arcNo << "\n";
+        pr.close();
+    }
+
+    qDebug() << "writing tree output";
+    QString rgFile = fileName + ".rg.bin";
+    std::ofstream of(rgFile.toStdString(),std::ios::binary);
+    of.write((char *)nodeids.data(),nodeids.size() * sizeof(int64_t));
+    of.write((char *)nodefns.data(),nodeids.size());
+    of.write((char *)nodeTypes.data(),nodeids.size());
+    of.write((char *)arcs.data(),arcs.size() * sizeof(int64_t));
+    of.close();
+
+    qDebug() << "writing partition";
+    QString rawFile = fileName + ".part.raw";
+    of.open(rawFile.toStdString(), std::ios::binary);
+    of.write((char *)arcMap.data(), arcMap.size() * sizeof(uint32_t));
+    of.close();
 }
 
 void ContourTree::remove(int64_t xi, std::vector<ContourTree::Node> &nodeArray) {
@@ -149,7 +232,8 @@ void ContourTree::remove(std::vector<int64_t> &arr, int64_t xi) {
 }
 
 void ContourTree::addArc(int64_t from, int64_t to) {
-    noarcs ++;
+    ctNodes[from].next.push_back(to);
+    ctNodes[to].prev.push_back(from);
 }
 
 

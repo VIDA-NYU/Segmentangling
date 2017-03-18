@@ -30,8 +30,6 @@ void MergeTree::computeTree(ScalarFunction* data, TreeType type) {
         computeSplitTree();
         ctree.setup(this);
         ctree.computeCT();
-        qDebug() << ctree.nv << " " << ctree.noarcs;
-        exit(0);
         break;
 
     case TypeSplitTree:
@@ -61,7 +59,7 @@ void MergeTree::setupData() {
     noVertices = data->getVertexCount();
     newVertex = false;
 
-    criticalPts.resize(noVertices);
+    criticalPts.resize(noVertices, REGULAR);
     sv.resize(noVertices);
     prev.resize(noVertices,-1);
     next.resize(noVertices,-1);
@@ -91,7 +89,6 @@ void MergeTree::computeJoinTree() {
         ct ++;
 
         int64_t v = sv[i];
-        criticalPts[v] = REGULAR;
         processVertex(v);
     }
     int64_t in = 0;
@@ -115,7 +112,6 @@ void MergeTree::computeSplitTree() {
         ct ++;
 
         int64_t v = sv[i];
-        criticalPts[v] = REGULAR;
         processVertexSplit(v);
     }
     int64_t in = noVertices - 1;
