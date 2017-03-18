@@ -15,6 +15,12 @@ struct ContourInformation {
 using ContourInport = DataInport<ContourInformation>;
 using ContourOutport = DataOutport<ContourInformation>;
 
+
+using Feature = std::vector<uint32_t>;
+using FeatureInformation = std::vector<Feature>;
+using FeatureInport = DataInport<FeatureInformation>;
+using FeatureOutport = DataOutport<FeatureInformation>;
+
 } // namespace inviwo
 
 #endif // __AB_COMMON_H__
