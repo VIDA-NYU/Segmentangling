@@ -27,7 +27,6 @@ protected:
     virtual void postProcess() override;
 
     VolumeInport _inportIdentifiers;
-    VolumeInport _inportFeatures;
     FeatureInport _inportFeatureMapping;
 
     IntProperty _currentVolume;

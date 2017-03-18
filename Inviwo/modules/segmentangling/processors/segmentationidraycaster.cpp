@@ -34,6 +34,7 @@ SegmentationIdRaycaster::SegmentationIdRaycaster()
     , _exitPort("exit")
     , _backgroundPort("bg")
     , _outport("outport")
+    , _performFeatureLookup("performFeatureLookup", "Lookup feature from segmentation", true)
     , _colorById("colorById", "Color By ID", true)
     , _filterById("filterById", "Filter by Identifier", true)
     , _id("id", "Identifier", -1, -1, std::numeric_limits<int>::max(), 1)
@@ -89,6 +90,7 @@ SegmentationIdRaycaster::SegmentationIdRaycaster()
     addProperty(_colorById);
     addProperty(_filterById);
     addProperty(_id);
+    addProperty(_performFeatureLookup);
 }
 
 const ProcessorInfo SegmentationIdRaycaster::getProcessorInfo() const {
@@ -191,7 +193,7 @@ void SegmentationIdRaycaster::process() {
         utilgl::bindAndSetUniforms(_shader, units, _backgroundPort, ImageType::ColorDepthPicking);
     }
     utilgl::setUniforms(_shader, _outport, _camera, _lighting, _raycasting, _positionIndicator,
-        _channel, _id, _filterById, _colorById);
+        _channel, _id, _filterById, _colorById, _performFeatureLookup);
 
     utilgl::singleDrawImagePlaneRect();
 

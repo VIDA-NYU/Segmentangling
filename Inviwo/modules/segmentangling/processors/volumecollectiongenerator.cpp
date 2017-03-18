@@ -1,6 +1,7 @@
 #include "volumecollectiongenerator.h"
 
 #include <modules/opengl/shader/shaderutils.h>
+#include <modules/opengl/volume/volumegl.h>
 
 namespace {
     static const int ModificationAdd = 0;
@@ -32,7 +33,6 @@ const ProcessorInfo VolumeCollectionGenerator::processorInfo_{
 VolumeCollectionGenerator::VolumeCollectionGenerator()
     : VolumeGLProcessor("volumecollectiongenerator.frag")
     , _inportIdentifiers("inportidentifiers")
-    , _inportFeatures("inportfeatures")
     , _inportFeatureMapping("inportfeaturemapping")
     , _currentVolume("currentVolume", "Current volume", 0, 0, 254)
     , _addVolume("addVolume", "Add Volume")
@@ -45,32 +45,35 @@ VolumeCollectionGenerator::VolumeCollectionGenerator()
     , _dirty{ false, false }
 {
     addPort(_inportIdentifiers);
-    addPort(_inportFeatures);
     addPort(_inportFeatureMapping);
 
-    this->dataFormat_ = DataUInt32::get();
+    this->dataFormat_ = DataUInt8::get();
 
     addProperty(_currentVolume);
+
+    _nVolumes.onChange([this]() {
+        _currentVolume.setMaxValue(_nVolumes - 1);
+    });
     addProperty(_nVolumes);
     _currentVolume.setMaxValue(_nVolumes - 1);
-    _addVolume.onChange([this]() {
-        logStatus("beg");
-        _currentVolume.setMaxValue(_nVolumes - 1);
-        _nVolumes = _nVolumes + 1;
-        _currentVolume = _nVolumes.get();
-        logStatus("end");
-    });
-    addProperty(_addVolume);
-    _removeVolume.onChange([this]() {
-        logStatus("beg");
-        _currentVolume = _currentVolume - 1;
-        _nVolumes = _nVolumes - 1;
-        _currentVolume.setMaxValue(_nVolumes - 1);
-        _dirty.removeVolume = true;
-        //_dirty.mapping = true;
-        logStatus("end");
-    });
-    addProperty(_removeVolume);
+    //_addVolume.onChange([this]() {
+    //    logStatus("beg");
+    //    _currentVolume.setMaxValue(_nVolumes - 1);
+    //    _nVolumes = _nVolumes + 1;
+    //    _currentVolume = _nVolumes.get();
+    //    logStatus("end");
+    //});
+    //addProperty(_addVolume);
+    //_removeVolume.onChange([this]() {
+    //    logStatus("beg");
+    //    _currentVolume = _currentVolume - 1;
+    //    _nVolumes = _nVolumes - 1;
+    //    _currentVolume.setMaxValue(_nVolumes - 1);
+    //    _dirty.removeVolume = true;
+    //    //_dirty.mapping = true;
+    //    logStatus("end");
+    //});
+    //addProperty(_removeVolume);
     
     // @FRAGILE:  Sync this with the shader
     _modification.addOption("a", "Add", ModificationAdd);
@@ -86,7 +89,7 @@ const ProcessorInfo VolumeCollectionGenerator::getProcessorInfo() const {
 }
 
 void VolumeCollectionGenerator::preProcess(TextureUnitContainer& cont) {
-    logStatus("beg preProcess");
+    //logStatus("beg preProcess");
     if (_ssbo == 0) {
         glGenBuffers(1, &_ssbo);
     }
@@ -110,12 +113,21 @@ void VolumeCollectionGenerator::preProcess(TextureUnitContainer& cont) {
         }
 
         std::vector<Feature> m = *_inportFeatureMapping.getData();
+        _featureToModify.setMaxValue(m.size() - 1);
+
         std::vector<uint32_t> idx = m[_featureToModify];
 
         // If we are adding, we want to set the current volume into it, otherwise we replace it with NoVolume := 0
-        const uint32_t v = (_modification.get() == ModificationAdd) ? static_cast<uint32_t>(_currentVolume.get() + 1) : 0;
         for (uint32_t i : idx) {
-            _mappingData[i] = v;
+            if (_modification.get() == ModificationAdd) {
+                if (_mappingData[i] != 0) {
+                    LogInfo("ASDASD");
+                }
+                _mappingData[i] = static_cast<uint32_t>(_currentVolume.get() + 1);
+            }
+            else {
+                _mappingData[i] = 0;
+            }
         }
 
         glBufferData(
@@ -129,17 +141,21 @@ void VolumeCollectionGenerator::preProcess(TextureUnitContainer& cont) {
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, _ssbo);
 
     utilgl::bindAndSetUniforms(shader_, cont, *_inportIdentifiers.getData(), "volumeIdentifiers");
-    utilgl::bindAndSetUniforms(shader_, cont, *_inportFeatures.getData(), "volumeFeatures");
     utilgl::setUniforms(shader_, _currentVolume, _featureToModify, _modification);
 
-    logStatus("end preProcess");
+    GLuint tex = volume_->getRepresentation<VolumeGL>()->getTexture()->getID();
+    glBindTexture(GL_TEXTURE_3D, tex);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+    //logStatus("end preProcess");
 }
 
 void VolumeCollectionGenerator::postProcess() {
     //volume_->dataMap_.dataRange = dvec2(0, _nVolumes + 1);
     //volume_->dataMap_.valueRange = dvec2(0, _nVolumes + 1);
-    volume_->dataMap_.dataRange = dvec2(0, 10);
-    volume_->dataMap_.valueRange = dvec2(0, 10);
+    volume_->dataMap_.dataRange = dvec2(0, _nVolumes);
+    volume_->dataMap_.valueRange = dvec2(0, _nVolumes);
 }
 
 }  // namespace

@@ -10,9 +10,6 @@ layout (std430, binding = 0) buffer Mapping {
 uniform usampler3D volumeIdentifiers;
 uniform VolumeParameters volumeIdentifiersParameters;
 
-uniform usampler3D volumeFeatures;
-uniform VolumeParameters volumeFeaturesParameters;
-
 in vec4 texCoord_;
 
 // @FRAGILE:  Sync this with volumecollectiongenerator.cpp anon namespace
@@ -26,4 +23,5 @@ in vec4 texCoord_;
 void main() {
     const uint idx = texture(volumeIdentifiers, texCoord_.xyz).r;
     FragData0 = vec4(mapping.values[idx]);
+    // FragData0 = vec4(2);
 }

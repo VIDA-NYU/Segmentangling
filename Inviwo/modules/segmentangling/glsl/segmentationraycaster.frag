@@ -78,6 +78,7 @@ uniform int channel;
 uniform bool colorById;
 uniform bool filterById;
 uniform int id;
+uniform bool performFeatureLookup;
 
 #define ERT_THRESHOLD 0.99  // threshold for early ray termination
 
@@ -124,7 +125,11 @@ vec4 rayTraversal(vec3 entryPoint, vec3 exitPoint, vec2 texCoords, float backgro
 
         color = vec4(0.0);
 
-        const uint feature = contour.values[segVoxel];
+        // const uint feature = contour.values[segVoxel];
+        uint feature = segVoxel;
+        if (performFeatureLookup) {
+            feature = contour.values[segVoxel];
+        }
 
         if (filterById) {
             if (feature == id) {

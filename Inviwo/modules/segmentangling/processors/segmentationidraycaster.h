@@ -58,6 +58,7 @@ protected:
 
     VolumeIndicatorProperty _positionIndicator;
     
+    BoolProperty _performFeatureLookup;
     BoolProperty _colorById;
     BoolProperty _filterById;
     IntProperty _id;
