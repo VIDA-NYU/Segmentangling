@@ -57,7 +57,8 @@ protected:
     SimpleLightingProperty _lighting;
 
     VolumeIndicatorProperty _positionIndicator;
-
+    
+    BoolProperty _colorById;
     BoolProperty _filterById;
     IntProperty _id;
 
