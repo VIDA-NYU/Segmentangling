@@ -34,7 +34,6 @@ protected:
     FeatureInport _inportFeatureMapping;
     ContourOutport _outportContour;
 
-
     IntProperty _currentVolume;
     ButtonProperty _addVolume;
     ButtonProperty _removeVolume;
@@ -66,8 +65,11 @@ protected:
 
     EventProperty _trigger;
 
+    FloatVec3Property _slice1Position;
+    FloatVec3Property _slice2Position;
+    FloatVec3Property _slice3Position;
 
-
+    FloatVec3Property& _lastChangedSlicePosition;
 
 
     std::vector<uint32_t> _mappingData;

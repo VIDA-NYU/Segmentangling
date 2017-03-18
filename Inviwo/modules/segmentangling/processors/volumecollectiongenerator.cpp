@@ -50,6 +50,10 @@ VolumeCollectionGenerator::VolumeCollectionGenerator()
     , _addVolumeEvent("_addVolumeEvent", "Add Volume", [this](Event* e) { addVolumeModification(e); }, IvwKey::F1, KeyState::Press)
     , _removeVolumeEvent("_removeVolumeEvent", "Remove Volume", [this](Event* e) { removeVolumeModification(e); }, IvwKey::F2, KeyState::Press)
     , _trigger("_trigger", "Trigger", [this](Event* e) { _modify.pressButton(); e->markAsUsed(); }, IvwKey::Space, KeyState::Press)
+    , _slice1Position("_slice1Position", "Slice 1 Position")
+    , _slice2Position("_slice2Position", "Slice 2 Position")
+    , _slice3Position("_slice3Position", "Slice 3 Position")
+    , _lastChangedSlicePosition(_slice1Position)
     , _information(nullptr)
     , _dirty{ false, false }
 {
@@ -102,11 +106,19 @@ VolumeCollectionGenerator::VolumeCollectionGenerator()
     addProperty(_featureToModify);
     _modify.onChange([&]() { _dirty.mapping = true; });
     addProperty(_modify);
+
+    _slice1Position.onChange([this]() { _lastChangedSlicePosition = _slice1Position; });
+    addProperty(_slice1Position);
+    _slice2Position.onChange([this]() { _lastChangedSlicePosition = _slice2Position; });
+    addProperty(_slice2Position);
+    _slice3Position.onChange([this]() { _lastChangedSlicePosition = _slice3Position; });
+    addProperty(_slice3Position);
 }
 
 const ProcessorInfo VolumeCollectionGenerator::getProcessorInfo() const {
     return processorInfo_;
 }
+#pragma optimize("", off)
 
 void VolumeCollectionGenerator::process() {
     if (!_information) {
@@ -133,27 +145,62 @@ void VolumeCollectionGenerator::process() {
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, _information->ssbo);
     if (_dirty.mapping) {
         std::vector<Feature> m = *_inportFeatureMapping.getData();
-        _featureToModify.setMaxValue(m.size() - 1);
+        uint32_t feature = -1;
 
-        std::vector<uint32_t> idx = m[_featureToModify];
+        bool featureFound = false;
+        {
+            glm::vec3 p = _lastChangedSlicePosition.get();
+            glm::size3_t dim = _inport.getData()->getDimensions();
 
-        // If we are adding, we want to set the current volume into it, otherwise we replace it with NoVolume := 0
-        for (uint32_t i : idx) {
-            if (_modification.get() == ModificationAdd) {
-                _mappingData[i + 1] = static_cast<uint32_t>(_currentVolume.get());
-            }
-            else {
-                _mappingData[i + 1] = uint32_t(-1);
+            const uint32_t* ptr = reinterpret_cast<const uint32_t*>(_inport.getData()->getRepresentation<VolumeRAM>()->getData());
+
+            glm::size3_t ip = {
+                size_t(p.x * dim.x),
+                size_t(p.y * dim.y),
+                size_t(p.z * dim.z)
+            };
+            glm::u64 idx = VolumeRAM::posToIndex(ip, dim);
+            uint32_t index = ptr[idx]; // arcs index
+
+            for (size_t i = 0; i < m.size(); ++i) {
+                const Feature& f = m[i];
+                auto it = std::find(
+                    f.begin(),
+                    f.end(),
+                    index
+                );
+
+                if (it != f.end()) {
+                    feature = i;
+                    featureFound = true;
+                    break;
+                }
             }
         }
 
-        glBufferData(
-            GL_SHADER_STORAGE_BUFFER,
-            sizeof(uint32_t) * (_mappingData.size() + 1),
-            _mappingData.data(),
-            GL_DYNAMIC_COPY
-        );
+        if (featureFound) {
+            _featureToModify.setMaxValue(m.size() - 1);
 
+            //std::vector<uint32_t> idx = m[_featureToModify];
+            std::vector<uint32_t> idx = m[feature];
+
+            // If we are adding, we want to set the current volume into it, otherwise we replace it with NoVolume := 0
+            for (uint32_t i : idx) {
+                if (_modification.get() == ModificationAdd) {
+                    _mappingData[i + 1] = static_cast<uint32_t>(_currentVolume.get());
+                }
+                else {
+                    _mappingData[i + 1] = uint32_t(-1);
+                }
+            }
+
+            glBufferData(
+                GL_SHADER_STORAGE_BUFFER,
+                sizeof(uint32_t) * (_mappingData.size() + 1),
+                _mappingData.data(),
+                GL_DYNAMIC_COPY
+            );
+        }
         _dirty.mapping = false;
     }
     glBufferSubData(
@@ -167,6 +214,7 @@ void VolumeCollectionGenerator::process() {
 
     _outportContour.setData(_information);
 }
+#pragma optimize("", on)
 
 void VolumeCollectionGenerator::selectVolume(Event* e, int volume) {
     _currentVolume = volume;
