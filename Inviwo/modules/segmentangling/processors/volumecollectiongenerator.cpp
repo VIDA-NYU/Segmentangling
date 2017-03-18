@@ -31,9 +31,10 @@ const ProcessorInfo VolumeCollectionGenerator::processorInfo_{
 };
 
 VolumeCollectionGenerator::VolumeCollectionGenerator()
-    : VolumeGLProcessor("volumecollectiongenerator.frag")
-    , _inportIdentifiers("inportidentifiers")
+    : Processor()
+    , _inport("volumeinport")
     , _inportFeatureMapping("inportfeaturemapping")
+    , _outportContour("outportcontour")
     , _currentVolume("currentVolume", "Current volume", 0, 0, 254)
     , _addVolume("addVolume", "Add Volume")
     , _removeVolume("removeVolume", "Remove Volume")
@@ -41,13 +42,15 @@ VolumeCollectionGenerator::VolumeCollectionGenerator()
     , _featureToModify("featureToModify", "Feature ID to Modify", 0, 0, 1000)
     , _modify("modify", "Modify")
     , _nVolumes("nVolumes", "Number of Volumes", 1, 0, 1000)
-    , _ssbo(0)
+    , _information(nullptr)
     , _dirty{ false, false }
 {
-    addPort(_inportIdentifiers);
+    //addPort(_inportIdentifiers);
+    addPort(_inport);
     addPort(_inportFeatureMapping);
+    addPort(_outportContour);
 
-    this->dataFormat_ = DataUInt8::get();
+    //this->dataFormat_ = DataUInt8::get();
 
     addProperty(_currentVolume);
 
@@ -88,30 +91,30 @@ const ProcessorInfo VolumeCollectionGenerator::getProcessorInfo() const {
     return processorInfo_;
 }
 
-void VolumeCollectionGenerator::preProcess(TextureUnitContainer& cont) {
-    //logStatus("beg preProcess");
-    if (_ssbo == 0) {
-        glGenBuffers(1, &_ssbo);
+void VolumeCollectionGenerator::process() {
+    if (!_information) {
+        _information = std::make_shared<ContourInformation>();
+
+        glGenBuffers(1, &(_information->ssbo));
     }
 
     if (_dirty.removeVolume) {
         for (uint32_t& m : _mappingData) {
-            if (m == _currentVolume + 1) {
+            if (m == _currentVolume) {
                 m = 0;
             }
         }
-
         _dirty.removeVolume = false;
     }
 
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, _ssbo);
-    if (_dirty.mapping) {
-        if (inport_.isChanged() || _mappingData.empty()) {
-            // The first port is just a dummy port, so if that changes, we need to recreate the data
-            glm::size3_t dim = inport_.getData()->getDimensions();
-            _mappingData = std::vector<uint32_t>(dim.x * dim.y * dim.z, 0);
-        }
+    if (_mappingData.empty() || _inport.isChanged()) {
+        glm::size3_t dim = _inport.getData()->getDimensions();
+        _mappingData = std::vector<uint32_t>(dim.x * dim.y * dim.z + 1, uint32_t(-1));
+    }
+    _mappingData[0] = _nVolumes + 1;
 
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, _information->ssbo);
+    if (_dirty.mapping) {
         std::vector<Feature> m = *_inportFeatureMapping.getData();
         _featureToModify.setMaxValue(m.size() - 1);
 
@@ -120,42 +123,32 @@ void VolumeCollectionGenerator::preProcess(TextureUnitContainer& cont) {
         // If we are adding, we want to set the current volume into it, otherwise we replace it with NoVolume := 0
         for (uint32_t i : idx) {
             if (_modification.get() == ModificationAdd) {
-                if (_mappingData[i] != 0) {
-                    LogInfo("ASDASD");
-                }
-                _mappingData[i] = static_cast<uint32_t>(_currentVolume.get() + 1);
+                _mappingData[i + 1] = static_cast<uint32_t>(_currentVolume.get());
             }
             else {
-                _mappingData[i] = 0;
+                _mappingData[i + 1] = uint32_t(-1);
             }
         }
 
         glBufferData(
             GL_SHADER_STORAGE_BUFFER,
-            sizeof(uint32_t) * _mappingData.size(),
+            sizeof(uint32_t) * (_mappingData.size() + 1),
             _mappingData.data(),
             GL_DYNAMIC_COPY
         );
+
         _dirty.mapping = false;
     }
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, _ssbo);
+    glBufferSubData(
+        GL_SHADER_STORAGE_BUFFER,
+        0,
+        sizeof(uint32_t),
+        _mappingData.data()
+    );
 
-    utilgl::bindAndSetUniforms(shader_, cont, *_inportIdentifiers.getData(), "volumeIdentifiers");
-    utilgl::setUniforms(shader_, _currentVolume, _featureToModify, _modification);
+    _information->nFeatures = _nVolumes + 1;
 
-    GLuint tex = volume_->getRepresentation<VolumeGL>()->getTexture()->getID();
-    glBindTexture(GL_TEXTURE_3D, tex);
-    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-    //logStatus("end preProcess");
-}
-
-void VolumeCollectionGenerator::postProcess() {
-    //volume_->dataMap_.dataRange = dvec2(0, _nVolumes + 1);
-    //volume_->dataMap_.valueRange = dvec2(0, _nVolumes + 1);
-    volume_->dataMap_.dataRange = dvec2(0, _nVolumes);
-    volume_->dataMap_.valueRange = dvec2(0, _nVolumes);
+    _outportContour.setData(_information);
 }
 
 }  // namespace

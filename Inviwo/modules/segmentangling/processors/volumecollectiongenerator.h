@@ -12,7 +12,7 @@
 
 namespace inviwo {
 
-class IVW_MODULE_SEGMENTANGLING_API VolumeCollectionGenerator : public VolumeGLProcessor {
+class IVW_MODULE_SEGMENTANGLING_API VolumeCollectionGenerator : public Processor {
 public:
     VolumeCollectionGenerator();
     virtual ~VolumeCollectionGenerator() = default;
@@ -21,13 +21,14 @@ public:
     static const ProcessorInfo processorInfo_;
 
 protected:
+    virtual void process() override;
+
     void logStatus(std::string msg) const;
 
-    virtual void preProcess(TextureUnitContainer &cont) override;
-    virtual void postProcess() override;
-
-    VolumeInport _inportIdentifiers;
+    VolumeInport _inport;
     FeatureInport _inportFeatureMapping;
+    ContourOutport _outportContour;
+
 
     IntProperty _currentVolume;
     ButtonProperty _addVolume;
@@ -40,8 +41,9 @@ protected:
     IntProperty _nVolumes;
 
     std::vector<uint32_t> _mappingData;
-
-    GLuint _ssbo;
+    
+    std::shared_ptr<ContourInformation> _information;
+    //ContourInformation* _information;
 
     struct {
         bool mapping;
