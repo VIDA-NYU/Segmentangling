@@ -34,6 +34,8 @@ SegmentationIdRaycaster::SegmentationIdRaycaster()
     , _exitPort("exit")
     , _backgroundPort("bg")
     , _outport("outport")
+    , _colorById("colorById", "Color By ID", true)
+    , _filterById("filterById", "Filter by Identifier", true)
     , _id("id", "Identifier", -1, -1, std::numeric_limits<int>::max(), 1)
     , _transferFunction("transferFunction", "Transfer function", TransferFunction(), &_volumePort)
     , _channel("channel", "Render Channel")
@@ -84,6 +86,8 @@ SegmentationIdRaycaster::SegmentationIdRaycaster()
     addProperty(_lighting);
     addProperty(_positionIndicator);
     addProperty(_toggleShading);
+    addProperty(_colorById);
+    addProperty(_filterById);
     addProperty(_id);
 }
 
@@ -187,7 +191,7 @@ void SegmentationIdRaycaster::process() {
         utilgl::bindAndSetUniforms(_shader, units, _backgroundPort, ImageType::ColorDepthPicking);
     }
     utilgl::setUniforms(_shader, _outport, _camera, _lighting, _raycasting, _positionIndicator,
-        _channel, _id);
+        _channel, _id, _filterById, _colorById);
 
     utilgl::singleDrawImagePlaneRect();
 

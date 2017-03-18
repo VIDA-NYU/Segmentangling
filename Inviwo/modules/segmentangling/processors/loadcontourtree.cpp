@@ -35,7 +35,8 @@ const ProcessorInfo LoadContourTree::processorInfo_{
 
 LoadContourTree::LoadContourTree()
     : Processor()
-    , _outport("identifierBuffer")
+    , _outportContour("identifierBuffer")
+    , _outportFeature("outportFeature")
     , _mode("mode", "Selection mode")
     , _contourTreeLevel("contourTreeLevel", "Contour Tree Level", 0.f, 0.f, 1.f)
     , _nFeatures("nFeatures", "Number of Features", 0, 0, 10000)
@@ -43,7 +44,8 @@ LoadContourTree::LoadContourTree()
     , _fileIsDirty(false)
     , _dataIsDirty(false)
 {
-    addPort(_outport, "VolumePortGroup");
+    addPort(_outportContour);
+    addPort(_outportFeature);
 
     _mode.addOption("nFeatures", "Number of features", ModeFeatures);
     _mode.addOption("threshold", "Threshold", ModeThreshold);
@@ -113,8 +115,17 @@ void LoadContourTree::process() {
             bufferData.data(),
             GL_DYNAMIC_COPY
         );
+        _outportContour.setData(info);
 
-        _outport.setData(info);
+
+        FeatureInformation* featureInfo = new FeatureInformation;
+        featureInfo->resize(features.size());
+
+        for (size_t i = 0; i < features.size(); ++i) {
+            featureInfo->at(i) = std::move(features[i].arcs);
+        }
+
+        _outportFeature.setData(featureInfo);
 
         _dataIsDirty = false;
     }

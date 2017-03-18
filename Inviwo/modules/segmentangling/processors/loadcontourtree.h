@@ -25,7 +25,8 @@ public:
 protected:
     virtual void process() override;
     
-    ContourOutport _outport;
+    ContourOutport _outportContour;
+    FeatureOutport _outportFeature;
    
     OptionPropertyInt _mode;
     FloatProperty _contourTreeLevel;
