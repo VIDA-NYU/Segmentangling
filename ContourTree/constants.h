@@ -10,7 +10,7 @@ const char SADDLE = 4;
 
 // Following the nomenclature of original Carr paper.
 // JoinTree -> maxima and SplitTree -> minima
-enum TreeType {JoinTree, SplitTree, ContourTree};
+enum TreeType {TypeJoinTree, TypeSplitTree, TypeContourTree};
 
 }
 

@@ -51,11 +51,11 @@ void testGrid() {
     start = std::chrono::system_clock::now();
     grid.loadGrid("/home/harishd/Desktop/Projects/Fish/data/Fish_256/Fish_256.raw");
     MergeTree ct;
-    ct.computeTree(&grid,JoinTree);
+    ct.computeTree(&grid,TypeJoinTree);
     end = std::chrono::system_clock::now();
     qDebug() << "Test 2 - Elapsed time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() << "ms\n";
 
-    ct.output("/home/harishd/Desktop/Projects/Fish/data/Fish_256/Fish_256", JoinTree);
+    ct.output("/home/harishd/Desktop/Projects/Fish/data/Fish_256/Fish_256", TypeJoinTree);
 }
 
 void testSimplification3() {
@@ -181,9 +181,9 @@ void testMergeTree() {
     TriMesh tri;
     tri.loadData("C:/Users/harishd/Desktop/Courses/Topology-2017/data/2d/assignment.off");
     MergeTree ct;
-    ct.computeTree(&tri,JoinTree);
+    ct.computeTree(&tri,TypeContourTree);
     qDebug() << "done";
-    ct.output("C:/Users/harishd/Desktop/Courses/Topology-2017/data/2d/assignment",JoinTree);
+    ct.output("C:/Users/harishd/Desktop/Courses/Topology-2017/data/2d/assignment",TypeContourTree);
 
     ContourTreeData ctdata;
     ctdata.loadBinFile("C:/Users/harishd/Desktop/Courses/Topology-2017/data/2d/assignment");
@@ -227,22 +227,23 @@ void testMergeTree() {
     qDebug() << "done!";
 }
 
-void preProcessing(bool mini = false) {
+void preProcessing() {
     // the actual raw file without the extension. the extensions will be added as and when needed.
-    QString data = "../data/toy-mini";
+    QString data = "../data/Fish_256";
 
     std::chrono::time_point<std::chrono::system_clock> start, end;
     start = std::chrono::system_clock::now();
-    Grid3D grid(128,128,128);
+    Grid3D grid(256,257,471);
     end = std::chrono::system_clock::now();
 
     start = std::chrono::system_clock::now();
     grid.loadGrid(data + ".raw");
     MergeTree ct;
-    contourtree::TreeType tree = JoinTree;
-    if(mini) {
-        tree = SplitTree;
-    }
+//    contourtree::TreeType tree = TypeJoinTree;
+//    if(mini) {
+//        tree = TypeSplitTree;
+//    }
+    contourtree::TreeType tree = TypeContourTree;
     ct.computeTree(&grid,tree);
     end = std::chrono::system_clock::now();
     qDebug() << "Time to compute contour tree: " << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() << "ms\n";
@@ -423,11 +424,11 @@ int main(int argc, char *argv[])
 //    testSimplification3();
 //    testPriorityQueue();
 //    testMergeTree();
-//    preProcessing(true);
+    preProcessing();
 //    testApi();
 
 //    generateData(true);
-    testFeatures();
+//    testFeatures();
     exit(0);
     return a.exec();
 }

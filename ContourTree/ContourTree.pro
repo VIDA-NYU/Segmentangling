@@ -16,7 +16,8 @@ SOURCES += main.cpp \
     Persistence.cpp \
     TriMesh.cpp \
     TopologicalFeatures.cpp \
-    HyperVolume.cpp
+    HyperVolume.cpp \
+    ContourTree.cpp
 
 HEADERS += \
     DisjointSets.hpp \
@@ -30,7 +31,8 @@ HEADERS += \
     Persistence.hpp \
     TriMesh.hpp \
     TopologicalFeatures.hpp \
-    HyperVolume.hpp
+    HyperVolume.hpp \
+    ContourTree.hpp
 
 # Unix configuration
 unix:!macx{
@@ -42,8 +44,10 @@ unix:!macx{
 
 win32{
     CONFIG += console
-
     INCLUDEPATH += "$$(BOOST_PATH)"
+    INCLUDEPATH += "$$(UniversalCRT_IncludePath)"
+
     LIBS += "-ladvapi32"
     LIBS += "-L$$(BOOST_LIB_PATH)"
+    LIBS += "-L$$(UniversalCRT_LibraryPath_x64)"
 }

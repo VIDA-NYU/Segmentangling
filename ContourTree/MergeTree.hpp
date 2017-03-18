@@ -6,6 +6,7 @@
 #include <vector>
 #include "DisjointSets.hpp"
 #include <QSet>
+#include "ContourTree.hpp"
 
 namespace contourtree {
 
@@ -50,6 +51,7 @@ public:
     int64_t newRoot;
 
     QSet<int64_t> set;
+    ContourTree ctree;
 
 private:
     QVector<int64_t> star;

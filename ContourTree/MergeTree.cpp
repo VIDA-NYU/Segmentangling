@@ -24,18 +24,21 @@ void MergeTree::computeTree(ScalarFunction* data, TreeType type) {
     setupData();
     orderVertices();
     switch(type) {
-    case ContourTree:
+    case TypeContourTree:
         computeJoinTree();
         nodes = DisjointSets<int64_t>(noVertices);
         computeSplitTree();
-        assert(false);
+        ctree.setup(this);
+        ctree.computeCT();
+        qDebug() << ctree.nv << " " << ctree.noarcs;
+        exit(0);
         break;
 
-    case SplitTree:
+    case TypeSplitTree:
         computeSplitTree();
         break;
 
-    case JoinTree:
+    case TypeJoinTree:
         computeJoinTree();
         break;
 
@@ -127,6 +130,10 @@ void MergeTree::computeSplitTree() {
 
 void MergeTree::output(QString fileName, TreeType tree)
 {
+    if(tree == TypeContourTree) {
+        ctree.output(fileName);
+        return;
+    }
     // assume size of contour tree fits within 4 bytes
     std::vector<uint32_t> arcMap;
     if(newVertex) {
@@ -171,7 +178,7 @@ void MergeTree::output(QString fileName, TreeType tree)
     qDebug() << "Generating tree";
     int nct = 0;
     if(newVertex) {
-        if(tree == JoinTree){
+        if(tree == TypeJoinTree){
             nodeids[nct] = noVertices;
             nodefns[nct] = 0;
             nodeTypes[nct] = MINIMUM;
@@ -187,7 +194,7 @@ void MergeTree::output(QString fileName, TreeType tree)
         }
     }
     if(newVertex) {
-        if(tree != JoinTree){
+        if(tree != TypeJoinTree){
             nodeids[nct] = noVertices;
             nodefns[nct] = 255;
             nodeTypes[nct] = MAXIMUM;
@@ -195,7 +202,7 @@ void MergeTree::output(QString fileName, TreeType tree)
         }
     }
 
-    if(tree == JoinTree) {
+    if(tree == TypeJoinTree) {
         uint32_t arcNo = 0;
         for(int64_t i = 0;i < noVertices;i ++) {
             if((criticalPts[i] == MAXIMUM || criticalPts[i] == SADDLE) && i != sv[0]) {
