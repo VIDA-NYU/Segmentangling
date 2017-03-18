@@ -22,6 +22,7 @@ set(HEADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../ContourTree/SimplifyCT.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../ContourTree/TopologicalFeatures.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../ContourTree/TriMesh.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../../ContourTree/ContourTree.hpp
 )
 ivw_group("Header Files" ${HEADER_FILES})
 
@@ -41,6 +42,7 @@ set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../ContourTree/SimplifyCT.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../ContourTree/TopologicalFeatures.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../ContourTree/TriMesh.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../../ContourTree/ContourTree.cpp
 )
 ivw_group("Source Files" ${SOURCE_FILES})
 
