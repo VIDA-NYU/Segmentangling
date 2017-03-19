@@ -117,7 +117,7 @@ void ContourTree::output(QString fileName) {
 
     arcMap.resize(nv, -1);
 
-    int arcNo = 0;
+    uint32_t arcNo = 0;
     for(int64_t i = 0;i < nv;i ++) {
         // go in sorted order
         int64_t v = tree->sv[i];
@@ -130,9 +130,7 @@ void ContourTree::output(QString fileName) {
         nodeTypes.push_back(tree->criticalPts[v]);
 
         // create an arc for which this critical point is the source of the arc
-        arcMap[v] = arcNo;
         // traverse up for each of its arcs
-
         int64_t from = v;
         for(int i = 0;i < ctNodes[v].next.size();i ++) {
             int64_t vv = ctNodes[v].next[i];
@@ -141,6 +139,7 @@ void ContourTree::output(QString fileName) {
                 arcMap[vv] = arcNo;
                 vv = ctNodes[vv].next[0];
             }
+            arcMap[v] = arcNo;
             arcMap[vv] = arcNo;
             int64_t to = vv;
             // create arc (from, to)
@@ -150,10 +149,11 @@ void ContourTree::output(QString fileName) {
         }
     }
 
-    qDebug() << "sanity testing segementation";
-    for(uint32_t ano: arcMap) {
-        assert(ano != (uint32_t)(-1));
-    }
+//    qDebug() << "sanity testing segementation";
+//    for(uint32_t ano: arcMap) {
+//        assert(ano != (uint32_t)(-1));
+//        assert(ano < arcNo);
+//    }
 
     // write meta data
     qDebug() << "Writing meta data";

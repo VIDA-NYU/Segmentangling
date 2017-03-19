@@ -18,8 +18,9 @@ public:
     TopologicalFeatures();
 
     void loadData(QString dataLocation, bool partition = false);
+    std::vector<Feature> getArcFeatures(int topk = -1, float th = 0);
+    std::vector<Feature> getPartitionedExtremaFeatures(int topk = -1, float th = 0);
     std::vector<Feature> getFeatures(int topk = -1, float th = 0);
-    std::vector<Feature> getFeaturesPart(int topk = -1, float th = 0);
 
 public:
     ContourTreeData ctdata;

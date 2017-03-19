@@ -86,7 +86,7 @@ std::vector<Feature> TopologicalFeatures::getFeatures(int topk, float th) {
     return features;
 }
 
-std::vector<Feature> TopologicalFeatures::getFeaturesPart(int topk, float th) {
+std::vector<Feature> TopologicalFeatures::getPartitionedExtremaFeatures(int topk, float th) {
     std::vector<Feature> features;
 
     QSet<size_t> featureSet;
@@ -118,6 +118,52 @@ std::vector<Feature> TopologicalFeatures::getFeaturesPart(int topk, float th) {
             queue.pop_front();
             if(b != bno && featureSet.contains(b)) {
                 continue;
+            }
+            Branch br = sim.branches.at(b);
+            f.arcs.insert(f.arcs.end(),br.arcs.data(), br.arcs.data()+br.arcs.size());
+            for(int i = 0;i < br.children.size();i ++) {
+                int bc = br.children.at(i);
+                queue.push_back(bc);
+            }
+        }
+        features.push_back(f);
+    }
+    return features;
+}
+
+std::vector<Feature> TopologicalFeatures::getArcFeatures(int topk, float th) {
+    SimplifyCT sim;
+    sim.setInput(&ctdata);
+
+    sim.simplify(order,topk,th,wts);
+
+    std::vector<Feature> features;
+    QSet<size_t> featureSet;
+    for(size_t _i = 0;_i < sim.branches.size();_i ++) {
+        if(sim.removed[_i]) {
+            continue;
+        }
+        featureSet << _i;
+    }
+    for(size_t _i = 0;_i < sim.branches.size();_i ++) {
+        size_t i = _i;
+        if(sim.removed[i]) {
+            continue;
+        }
+        Branch b1 = sim.branches.at(i);
+        Feature f;
+        f.from = ctdata.nodeVerts[b1.from];
+        f.to = ctdata.nodeVerts[b1.to];
+
+        size_t bno = i;
+        std::deque<size_t> queue;
+        queue.push_back(bno);
+        while(queue.size() > 0) {
+            size_t b = queue.front();
+            queue.pop_front();
+            if(b != bno && featureSet.contains(b)) {
+                // this cannot happen
+                assert(false);
             }
             Branch br = sim.branches.at(b);
             f.arcs.insert(f.arcs.end(),br.arcs.data(), br.arcs.data()+br.arcs.size());
