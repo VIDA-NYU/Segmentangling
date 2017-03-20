@@ -45,17 +45,25 @@ VolumeCollectionGenerator::VolumeCollectionGenerator()
     , _modify("modify", "Modify")
     , _nVolumes("nVolumes", "Number of Volumes", 15, 1, 1000)
     , _selectVolume1Event("_selectVolume1Event", "Select Volume 1", [this](Event* e) { selectVolume(e, 0); }, IvwKey::Num1, KeyState::Press)
-    , _selectVolume2Event("_selectVolume3Event", "Select Volume 2", [this](Event* e) { selectVolume(e, 1); }, IvwKey::Num2, KeyState::Press)
-    , _selectVolume3Event("_selectVolume4Event", "Select Volume 3", [this](Event* e) { selectVolume(e, 2); }, IvwKey::Num3, KeyState::Press)
+    , _selectVolume2Event("_selectVolume2Event", "Select Volume 2", [this](Event* e) { selectVolume(e, 1); }, IvwKey::Num2, KeyState::Press)
+    , _selectVolume3Event("_selectVolume3Event", "Select Volume 3", [this](Event* e) { selectVolume(e, 2); }, IvwKey::Num3, KeyState::Press)
+    , _selectVolume4Event("_selectVolume4Event", "Select Volume 4", [this](Event* e) { selectVolume(e, 3); }, IvwKey::Num4, KeyState::Press)
+    , _selectVolume5Event("_selectVolume5Event", "Select Volume 5", [this](Event* e) { selectVolume(e, 4); }, IvwKey::Num5, KeyState::Press)
+    , _selectVolume6Event("_selectVolume6Event", "Select Volume 6", [this](Event* e) { selectVolume(e, 5); }, IvwKey::Num6, KeyState::Press)
+    , _selectVolume7Event("_selectVolume7Event", "Select Volume 7", [this](Event* e) { selectVolume(e, 6); }, IvwKey::Num7, KeyState::Press)
+    , _selectVolume8Event("_selectVolume8Event", "Select Volume 8", [this](Event* e) { selectVolume(e, 7); }, IvwKey::Num8, KeyState::Press)
+    , _selectVolume9Event("_selectVolume9Event", "Select Volume 9", [this](Event* e) { selectVolume(e, 8); }, IvwKey::Num9, KeyState::Press)
+    , _selectVolume10Event("_selectVolume10Event", "Select Volume 10", [this](Event* e) { selectVolume(e, 9); }, IvwKey::Num0, KeyState::Press)
     , _addVolumeEvent("_addVolumeEvent", "Add Volume", [this](Event* e) { addVolumeModification(e); }, IvwKey::F1, KeyState::Press)
     , _removeVolumeEvent("_removeVolumeEvent", "Remove Volume", [this](Event* e) { removeVolumeModification(e); }, IvwKey::F2, KeyState::Press)
     , _trigger("_trigger", "Trigger", [this](Event* e) { _modify.pressButton(); e->markAsUsed(); }, IvwKey::Space, KeyState::Press)
+    , _clearAllVolumes("_clearAllVolumes", "Clear all volumes")
     , _slice1Position("_slice1Position", "Slice 1 Position")
     , _slice2Position("_slice2Position", "Slice 2 Position")
     , _slice3Position("_slice3Position", "Slice 3 Position")
     , _lastChangedSlicePosition(_slice1Position)
     , _information(nullptr)
-    , _dirty{ false, false }
+    , _dirty{ false, false, false }
 {
     //addPort(_inportIdentifiers);
     addPort(_inport);
@@ -67,13 +75,23 @@ VolumeCollectionGenerator::VolumeCollectionGenerator()
     addProperty(_selectVolume1Event);
     addProperty(_selectVolume2Event);
     addProperty(_selectVolume3Event);
+    addProperty(_selectVolume4Event);
+    addProperty(_selectVolume5Event);
+    addProperty(_selectVolume6Event);
+    addProperty(_selectVolume7Event);
+    addProperty(_selectVolume8Event);
+    addProperty(_selectVolume9Event);
+    addProperty(_selectVolume10Event);
 
     addProperty(_addVolumeEvent);
     addProperty(_removeVolumeEvent);
-    
+
     addProperty(_trigger);
 
     addProperty(_currentVolume);
+
+    _clearAllVolumes.onChange([this]() { _dirty.clearAllVolumes = true; });
+    addProperty(_clearAllVolumes);
 
     _nVolumes.onChange([this]() {
         _currentVolume.setMaxValue(_nVolumes - 1);
@@ -130,10 +148,19 @@ void VolumeCollectionGenerator::process() {
     if (_dirty.removeVolume) {
         for (uint32_t& m : _mappingData) {
             if (m == _currentVolume) {
-                m = 0;
+                m = uint32_t(-1);
             }
         }
+        //_dirty.mapping = true;
         _dirty.removeVolume = false;
+    }
+
+    if (_dirty.clearAllVolumes) {
+        for (uint32_t& m : _mappingData) {
+            m = uint32_t(-1);
+        }
+        //_dirty.mapping = true;
+        _dirty.clearAllVolumes = false;
     }
 
     if (_mappingData.empty() || _inport.isChanged()) {
@@ -178,6 +205,7 @@ void VolumeCollectionGenerator::process() {
             }
         }
 
+        LogInfo("Feature found: " << featureFound << "{ " << feature << " }");
         if (featureFound) {
             _featureToModify.setMaxValue(m.size() - 1);
 

@@ -47,13 +47,13 @@ protected:
     EventProperty _selectVolume1Event;
     EventProperty _selectVolume2Event;
     EventProperty _selectVolume3Event;
-    //EventProperty _selectVolume4Event;
-    //EventProperty _selectVolume5Event;
-    //EventProperty _selectVolume6Event;
-    //EventProperty _selectVolume7Event;
-    //EventProperty _selectVolume8Event;
-    //EventProperty _selectVolume9Event;
-    //EventProperty _selectVolume10Event;
+    EventProperty _selectVolume4Event;
+    EventProperty _selectVolume5Event;
+    EventProperty _selectVolume6Event;
+    EventProperty _selectVolume7Event;
+    EventProperty _selectVolume8Event;
+    EventProperty _selectVolume9Event;
+    EventProperty _selectVolume10Event;
     //EventProperty _selectVolume11Event;
     //EventProperty _selectVolume12Event;
     //EventProperty _selectVolume13Event;
@@ -64,6 +64,8 @@ protected:
     EventProperty _removeVolumeEvent;
 
     EventProperty _trigger;
+
+    ButtonProperty _clearAllVolumes;
 
     FloatVec3Property _slice1Position;
     FloatVec3Property _slice2Position;
@@ -80,6 +82,7 @@ protected:
     struct {
         bool mapping;
         bool removeVolume;
+        bool clearAllVolumes;
     } _dirty;
 };
 
