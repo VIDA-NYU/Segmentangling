@@ -31,7 +31,6 @@
 #include "utils/sampler3d.glsl"
 #include "utils/classification.glsl"
 
-
 #include "common.hglsl"
 
 uniform isampler3D volume;
@@ -49,23 +48,21 @@ void main() {
     // Rotate around center and translate back to origin
     vec3 samplePos = (sliceRotation * vec4(texCoord_.x, texCoord_.y, slice, 1.0)).xyz;
   
-    float voxel = getNormalizedVoxel(volume, volumeParameters, samplePos).r;
+    const vec4 voxel = getNormalizedVoxel(volume, volumeParameters, samplePos);
+    const float feature = voxel.r;
+    const float fade = voxel.g;
 
-    if (voxel == 0.0) {
+    if (feature == 0.0) {
         FragData0 = vec4(0.0);
     }
     else {
-        FragData0 = vec4(colormap(voxel).rgb, 1.0);
+        FragData0.rgb = colormap(feature).rgb;
+        if (fade == 0) {
+            // This fragment has been marked as 'selected'
+            FragData0.a = 0.2;
+        }
+        else {
+            FragData0.a = 1.0;
+        }
     }
-
-
-    // int voxel = texture(volume, samplePos).x;
-    // FragData0 = vec4(float(voxel) / 100000000);
-
-    // if ()
-    // if (voxel*4 == 0) {
-    //     FragData0 = vec4(0.0);
-    // }
-    // else {
-    // }
 }

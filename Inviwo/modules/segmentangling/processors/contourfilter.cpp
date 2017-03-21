@@ -29,10 +29,14 @@ const ProcessorInfo ContourFilter::processorInfo_{
 ContourFilter::ContourFilter()
     : VolumeGLProcessor("contourfilter.frag")
     , _contour("identifierBuffer")
+    , _contourNegative("identifierBufferNegative")
 {
-    addPort(_contour, "ContourGroup");
+    addPort(_contour);
+    _contourNegative.setOptional(true);
+    addPort(_contourNegative);
 
-    this->dataFormat_ = DataUInt32::get();
+    //this->dataFormat_ = DataUInt32::get();
+    this->dataFormat_ = DataVec2UInt32::get();
     //this->dataFormat_ = DataFloat32::get();
 }
 
@@ -43,6 +47,12 @@ const ProcessorInfo ContourFilter::getProcessorInfo() const {
 void ContourFilter::preProcess(TextureUnitContainer& cont) {
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, _contour.getData()->ssbo);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, _contour.getData()->ssbo);
+
+    shader_.setUniform("hasNegativeData", _contourNegative.hasData());
+    if (_contourNegative.hasData()) {
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, _contourNegative.getData()->ssbo);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, _contourNegative.getData()->ssbo);
+    }
 
     GLuint tex = volume_->getRepresentation<VolumeGL>()->getTexture()->getID();
     glBindTexture(GL_TEXTURE_3D, tex);

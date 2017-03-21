@@ -28,6 +28,7 @@ protected:
     virtual void postProcess() override;
     
     ContourInport _contour;
+    ContourInport _contourNegative;
 };
 
 } // namespace
