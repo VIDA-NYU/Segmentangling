@@ -163,13 +163,20 @@ void VolumeCollectionGenerator::process() {
         _dirty.clearAllVolumes = false;
     }
 
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, _information->ssbo);
     if (_mappingData.empty() || _inport.isChanged()) {
         glm::size3_t dim = _inport.getData()->getDimensions();
         _mappingData = std::vector<uint32_t>(dim.x * dim.y * dim.z + 1, uint32_t(-1));
+
+        glBufferData(
+            GL_SHADER_STORAGE_BUFFER,
+            sizeof(uint32_t) * (_mappingData.size() + 1),
+            _mappingData.data(),
+            GL_DYNAMIC_COPY
+        );
     }
     _mappingData[0] = _nVolumes + 1;
 
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, _information->ssbo);
     if (_dirty.mapping) {
         std::vector<Feature> m = *_inportFeatureMapping.getData();
         uint32_t feature = -1;
