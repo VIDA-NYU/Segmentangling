@@ -28,8 +28,6 @@ protected:
     void addVolumeModification(Event* e);
     void removeVolumeModification(Event* e);
 
-    void logStatus(std::string msg) const;
-
     VolumeInport _inport;
     FeatureInport _inportFeatureMapping;
     ContourOutport _outportContour;
@@ -72,6 +70,8 @@ protected:
     FloatVec3Property _slice3Position;
 
     FloatVec3Property& _lastChangedSlicePosition;
+
+    StringProperty _featureNumberFound;
 
 
     std::vector<uint32_t> _mappingData;

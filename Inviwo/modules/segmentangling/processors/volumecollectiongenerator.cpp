@@ -5,24 +5,43 @@
 
 #include <inviwo/core/interaction/events/keyboardkeys.h>
 
+namespace inviwo {
+
 namespace {
     static const int ModificationAdd = 0;
     static const int ModificationRemove = 1;
+
+    std::pair<uint32_t, bool> findFeature(const glm::vec3& pos, const VolumeRAM* data, const std::vector<Feature>& features) {
+        const glm::size3_t dim = data->getDimensions();
+
+        const uint32_t* ptr = reinterpret_cast<const uint32_t*>(data->getData());
+
+        glm::size3_t ip = {
+            size_t(pos.x * dim.x),
+            size_t(pos.y * dim.y),
+            size_t(pos.z * dim.z)
+        };
+        glm::u64 idx = VolumeRAM::posToIndex(ip, dim);
+        uint32_t index = ptr[idx]; // arcs index
+
+        for (size_t i = 0; i < features.size(); ++i) {
+            const Feature& f = features[i];
+            auto it = std::find(
+                f.begin(),
+                f.end(),
+                index
+            );
+
+            if (it != f.end()) {
+                return { i, true };
+            }
+        }
+
+        return { uint32_t(-1), false };
+    }
+
+
 } // namespace
-
-namespace inviwo {
-
-void VolumeCollectionGenerator::logStatus(std::string msg) const {
-    LogInfo("Status");
-    LogInfo(msg);
-    LogInfo("_dirty.mapping: " << _dirty.mapping << "\t" << 
-        "_dirty.removeVolume: " << _dirty.removeVolume << "\t" <<
-        "_currentVolume: " << _currentVolume << "\t" <<
-        "_featureToModify: " << _featureToModify << "\t" <<
-        "_nVolumes: " << _nVolumes << "\t" <<
-        "_modification: " << _modification.get()
-    );
-}
 
 const ProcessorInfo VolumeCollectionGenerator::processorInfo_{
     "bock.volumecollectiongenerator",  // Class identifier
@@ -61,6 +80,7 @@ VolumeCollectionGenerator::VolumeCollectionGenerator()
     , _slice1Position("_slice1Position", "Slice 1 Position")
     , _slice2Position("_slice2Position", "Slice 2 Position")
     , _slice3Position("_slice3Position", "Slice 3 Position")
+    , _featureNumberFound("_featureNumberFound", "Feature Number Found")
     , _lastChangedSlicePosition(_slice1Position)
     , _information(nullptr)
     , _dirty{ false, false, false }
@@ -125,12 +145,32 @@ VolumeCollectionGenerator::VolumeCollectionGenerator()
     _modify.onChange([&]() { _dirty.mapping = true; });
     addProperty(_modify);
 
-    _slice1Position.onChange([this]() { _lastChangedSlicePosition = _slice1Position; });
+    auto updateFeature = [this](){
+        if (_inportFeatureMapping.hasData() && _inport.hasData()) {
+            const std::vector<Feature>& m = *_inportFeatureMapping.getData();
+            std::pair<uint32_t, bool> featureFound = findFeature(
+                _lastChangedSlicePosition,
+                _inport.getData()->getRepresentation<VolumeRAM>(),
+                m
+            );
+            if (featureFound.second) {
+                _featureNumberFound = std::to_string(featureFound.first);
+            }
+            else {
+                _featureNumberFound = "not found";
+            }
+        }
+    };
+
+    _slice1Position.onChange([this, updateFeature]() { _lastChangedSlicePosition = _slice1Position; updateFeature(); });
     addProperty(_slice1Position);
-    _slice2Position.onChange([this]() { _lastChangedSlicePosition = _slice2Position; });
+    _slice2Position.onChange([this, updateFeature]() { _lastChangedSlicePosition = _slice2Position; updateFeature(); });
     addProperty(_slice2Position);
-    _slice3Position.onChange([this]() { _lastChangedSlicePosition = _slice3Position; });
+    _slice3Position.onChange([this, updateFeature]() { _lastChangedSlicePosition = _slice3Position; updateFeature(); });
     addProperty(_slice3Position);
+
+    _featureNumberFound.setReadOnly(true);
+    addProperty(_featureNumberFound);
 }
 
 const ProcessorInfo VolumeCollectionGenerator::getProcessorInfo() const {
@@ -179,45 +219,13 @@ void VolumeCollectionGenerator::process() {
 
     if (_dirty.mapping) {
         std::vector<Feature> m = *_inportFeatureMapping.getData();
-        uint32_t feature = -1;
 
-        bool featureFound = false;
-        {
-            glm::vec3 p = _lastChangedSlicePosition.get();
-            glm::size3_t dim = _inport.getData()->getDimensions();
-
-            const uint32_t* ptr = reinterpret_cast<const uint32_t*>(_inport.getData()->getRepresentation<VolumeRAM>()->getData());
-
-            glm::size3_t ip = {
-                size_t(p.x * dim.x),
-                size_t(p.y * dim.y),
-                size_t(p.z * dim.z)
-            };
-            glm::u64 idx = VolumeRAM::posToIndex(ip, dim);
-            uint32_t index = ptr[idx]; // arcs index
-
-            for (size_t i = 0; i < m.size(); ++i) {
-                const Feature& f = m[i];
-                auto it = std::find(
-                    f.begin(),
-                    f.end(),
-                    index
-                );
-
-                if (it != f.end()) {
-                    feature = i;
-                    featureFound = true;
-                    break;
-                }
-            }
-        }
-
-        LogInfo("Feature found: " << featureFound << "{ " << feature << " }");
-        if (featureFound) {
+        std::pair<uint32_t, bool> featureFound = findFeature(_lastChangedSlicePosition, _inport.getData()->getRepresentation<VolumeRAM>(), m);
+        if (featureFound.second) {
             _featureToModify.setMaxValue(m.size() - 1);
 
             //std::vector<uint32_t> idx = m[_featureToModify];
-            std::vector<uint32_t> idx = m[feature];
+            std::vector<uint32_t> idx = m[featureFound.first];
 
             // If we are adding, we want to set the current volume into it, otherwise we replace it with NoVolume := 0
             for (uint32_t i : idx) {
