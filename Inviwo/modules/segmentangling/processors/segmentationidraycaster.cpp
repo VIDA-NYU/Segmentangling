@@ -30,11 +30,11 @@ SegmentationIdRaycaster::SegmentationIdRaycaster()
     , _volumePort("volume")
     , _segmentationPort("segmentation")
     , _contour("contour")
+    , _contourNegative("contourNegative")
     , _entryPort("entry")
     , _exitPort("exit")
     , _backgroundPort("bg")
     , _outport("outport")
-    , _performFeatureLookup("performFeatureLookup", "Lookup feature from segmentation", true)
     , _colorById("colorById", "Color By ID", true)
     , _filterById("filterById", "Filter by Identifier", true)
     , _id("id", "Identifier", -1, -1, std::numeric_limits<int>::max(), 1)
@@ -53,6 +53,8 @@ SegmentationIdRaycaster::SegmentationIdRaycaster()
     addPort(_volumePort, "VolumePortGroup");
     addPort(_segmentationPort, "VolumePortGroup");
     addPort(_contour);
+    _contourNegative.setOptional(true);
+    addPort(_contourNegative);
     addPort(_entryPort, "ImagePortGroup1");
     addPort(_exitPort, "ImagePortGroup1");
     addPort(_outport, "ImagePortGroup1");
@@ -90,7 +92,6 @@ SegmentationIdRaycaster::SegmentationIdRaycaster()
     addProperty(_colorById);
     addProperty(_filterById);
     addProperty(_id);
-    addProperty(_performFeatureLookup);
 }
 
 const ProcessorInfo SegmentationIdRaycaster::getProcessorInfo() const {
@@ -185,6 +186,14 @@ void SegmentationIdRaycaster::process() {
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, contourInformation->ssbo);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, contourInformation->ssbo);
 
+    bool hasNegative = _contourNegative.hasData();
+    _shader.setUniform("hasNegativeData", hasNegative);
+    if (hasNegative) {
+        const auto& i = _contourNegative.getData();
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, i->ssbo);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, i->ssbo);
+    }
+
     utilgl::bindAndSetUniforms(_shader, units, _transferFunction);
     utilgl::bindAndSetUniforms(_shader, units, _entryPort, ImageType::ColorDepthPicking);
     utilgl::bindAndSetUniforms(_shader, units, _exitPort, ImageType::ColorDepth);
@@ -193,7 +202,7 @@ void SegmentationIdRaycaster::process() {
         utilgl::bindAndSetUniforms(_shader, units, _backgroundPort, ImageType::ColorDepthPicking);
     }
     utilgl::setUniforms(_shader, _outport, _camera, _lighting, _raycasting, _positionIndicator,
-        _channel, _id, _filterById, _colorById, _performFeatureLookup);
+        _channel, _id, _filterById, _colorById);
 
     utilgl::singleDrawImagePlaneRect();
 

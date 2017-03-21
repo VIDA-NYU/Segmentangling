@@ -45,6 +45,11 @@ layout (std430, binding = 0) buffer Contour {
     uint values[];
 } contour;
 
+layout (std430, binding = 1) buffer NegativeContour {
+    uint nFeatures;
+    uint values[];
+} negativeContour;
+
 uniform VolumeParameters volumeParameters;
 uniform sampler3D volume;
 uniform usampler3D segmentationVolume;
@@ -79,6 +84,8 @@ uniform bool colorById;
 uniform bool filterById;
 uniform int id;
 uniform bool performFeatureLookup;
+
+uniform bool hasNegativeData;
 
 #define ERT_THRESHOLD 0.99  // threshold for early ray termination
 
@@ -125,11 +132,7 @@ vec4 rayTraversal(vec3 entryPoint, vec3 exitPoint, vec2 texCoords, float backgro
 
         color = vec4(0.0);
 
-        // const uint feature = contour.values[segVoxel];
-        uint feature = segVoxel;
-        if (performFeatureLookup) {
-            feature = contour.values[segVoxel];
-        }
+        const uint feature = contour.values[segVoxel];
 
         if (filterById) {
             if (feature == id) {
@@ -149,6 +152,13 @@ vec4 rayTraversal(vec3 entryPoint, vec3 exitPoint, vec2 texCoords, float backgro
                     const float normFeature = float(feature + 1) / float(contour.nFeatures);
                     color.rgb = colormap(normFeature).rgb;
                 }
+            }
+        }
+
+        if (hasNegativeData) {
+            const uint negativeFeature = negativeContour.values[segVoxel];
+            if (negativeFeature != -1) {
+                color = vec4(0.0);
             }
         }
 

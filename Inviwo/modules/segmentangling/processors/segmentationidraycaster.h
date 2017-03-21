@@ -42,6 +42,7 @@ protected:
     VolumeInport _volumePort;
     VolumeInport _segmentationPort;
     ContourInport _contour;
+    ContourInport _contourNegative;
     std::shared_ptr<const Volume> _loadedVolume;
     std::shared_ptr<const Volume> _loadedSegmentationVolume;
     ImageInport _entryPort;
@@ -58,7 +59,6 @@ protected:
 
     VolumeIndicatorProperty _positionIndicator;
     
-    BoolProperty _performFeatureLookup;
     BoolProperty _colorById;
     BoolProperty _filterById;
     IntProperty _id;
