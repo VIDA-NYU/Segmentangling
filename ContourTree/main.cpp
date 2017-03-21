@@ -229,12 +229,12 @@ void testMergeTree() {
 
 void preProcessing() {
     // the actual raw file without the extension. the extensions will be added as and when needed.
-    QString data = "../data/ContourTree/Fish_256";
+//    QString data = "../data/ContourTree/Fish_256";
+    QString data = "../data/Cameroon/Cameroon_256";
 
     std::chrono::time_point<std::chrono::system_clock> start, end;
-//    start = std::chrono::system_clock::now();
-//    Grid3D grid(256,257,471);
-//    end = std::chrono::system_clock::now();
+////    Grid3D grid(256,257,471);
+//    Grid3D grid(256,256,527);
 
 //    start = std::chrono::system_clock::now();
 //    grid.loadGrid(data + ".raw");
@@ -414,12 +414,16 @@ void testFeatures() {
 }
 
 void testConnectivity() {
-    QString data = "../data/ContourTree/Fish_256";
-    Grid3D grid(256,257,471);
+//    QString data = "../data/ContourTree/Fish_256";
+//    Grid3D grid(256,257,471);
+
+    QString data = "../data/Cameroon/Cameroon_256";
+    Grid3D grid(256,256,527);
+
     // read part file
     int dimx = 256;
-    int dimy = 257;
-    int dimz = 471;
+    int dimy = 256;
+    int dimz = 527;
 
     qDebug() << "reading part";
     std::vector<uint32_t> part(dimx * dimy * dimz);
@@ -451,7 +455,7 @@ void testConnectivity() {
     std::chrono::time_point<std::chrono::system_clock> start, end;
     start = std::chrono::system_clock::now();
     tf.loadData(data);
-    std::vector<Feature> features = tf.getFeatures(30,0);
+    std::vector<Feature> features = tf.getFeatures(15,0,0.3);
     end = std::chrono::system_clock::now();
     qDebug() << "Time to get features: " << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() << "ms";
     qDebug() << "no. of features:" << features.size() << "\n";
@@ -505,8 +509,8 @@ int main(int argc, char *argv[])
 //    testApi();
 
 //    generateData(true);
-    testFeatures();
-//    testConnectivity();
+//    testFeatures();
+    testConnectivity();
     exit(0);
     return a.exec();
 }
