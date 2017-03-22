@@ -5,6 +5,8 @@
 
 #include <inviwo/core/interaction/events/keyboardkeys.h>
 
+#include "libqhullcpp/Qhull.h"
+
 namespace inviwo {
 
 namespace {
@@ -83,7 +85,9 @@ void VolumeExportGenerator::process() {
         VolumeRAM* rep = v->getEditableRepresentation<VolumeRAM>();
         uint8_t* data = reinterpret_cast<uint8_t*>(rep->getData());
 
-        LogInfo("Creating volume " << iFeature);
+        std::vector<double> points;
+
+        LogInfo("Creating convex hull " << iFeature);
         for (size_t x = 0; x < rep->getDimensions().x; ++x) {
             for (size_t y = 0; y < rep->getDimensions().y; ++y) {
                 for (size_t z = 0; z < rep->getDimensions().z; ++z) {
@@ -91,7 +95,39 @@ void VolumeExportGenerator::process() {
 
                     const uint32_t id = identifierData[idx];
 
-                    if (idMapping[id] != iFeature) {
+                    if (idMapping[id] == iFeature) {
+                        // If it belongs to the feature, we want to throw it into the QHull computation later
+                        points.push_back(static_cast<double>(x) / static_cast<double>(rep->getDimensions().x));
+                        points.push_back(static_cast<double>(y) / static_cast<double>(rep->getDimensions().y));
+                        points.push_back(static_cast<double>(z) / static_cast<double>(rep->getDimensions().z));
+                    }
+                }
+            }
+        }
+
+        using namespace orgQhull;
+        const char* f = "";
+        Qhull hull(f, 3, points.size() / 3, points.data(), f);
+
+
+        LogInfo("Creating volume " << iFeature);
+        for (size_t x = 0; x < rep->getDimensions().x; ++x) {
+            for (size_t y = 0; y < rep->getDimensions().y; ++y) {
+                for (size_t z = 0; z < rep->getDimensions().z; ++z) {
+                    const uint64_t idx = VolumeRAM::posToIndex({ x, y, z }, rep->getDimensions());
+
+                    double pt[3] = {
+                        static_cast<double>(x) / static_cast<double>(rep->getDimensions().x),
+                        static_cast<double>(y) / static_cast<double>(rep->getDimensions().y),
+                        static_cast<double>(z) / static_cast<double>(rep->getDimensions().z)
+                    };
+
+                    double dist;
+                    boolT isOutside;
+                    qh_findbestfacet(hull.qh(), pt, qh_False, &dist, &isOutside);
+
+                    // Remove all the voxels that are outside of the convex hull
+                    if (isOutside) {
                         data[idx] = 0;
                     }
                 }

@@ -71,7 +71,7 @@ ivw_create_module(${SOURCE_FILES} ${HEADER_FILES} ${SHADER_FILES})
 target_link_libraries(
     ${${mod}_target} 
     "${CMAKE_CURRENT_SOURCE_DIR}/ext/qhull/lib/qhullcpp.lib"
-    "${CMAKE_CURRENT_SOURCE_DIR}/ext/qhull/lib/qhullstatic.lib"
+    # "${CMAKE_CURRENT_SOURCE_DIR}/ext/qhull/lib/qhullstatic.lib"
     "${CMAKE_CURRENT_SOURCE_DIR}/ext/qhull/lib/qhullstatic_r.lib"
 )
 
