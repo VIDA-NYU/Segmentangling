@@ -1,6 +1,9 @@
 #--------------------------------------------------------------------
 ivw_module(Segmentangling)
 
+ivw_include_directories(${CMAKE_CURRENT_SOURCE_DIR}/ext/qhull/src)
+
+
 #--------------------------------------------------------------------
 # Add header files
 set(HEADER_FILES 
@@ -59,9 +62,18 @@ ivw_group("Shader Files" ${SHADER_FILES})
 # Add definition
 ivw_add_definition(__CL_ENABLE_EXCEPTIONS)
 
+# ivw_add_dependencies_on_target(target ${${mod}_target} "ext/qhull/lib/qhullcpp.lib" "ext/qhull/lib/qhullstatic.lib" "ext/qhull/lib/qhullstatic_r.lib")
+
 #--------------------------------------------------------------------
 # Create module
 ivw_create_module(${SOURCE_FILES} ${HEADER_FILES} ${SHADER_FILES})
+
+target_link_libraries(
+    ${${mod}_target} 
+    "${CMAKE_CURRENT_SOURCE_DIR}/ext/qhull/lib/qhullcpp.lib"
+    "${CMAKE_CURRENT_SOURCE_DIR}/ext/qhull/lib/qhullstatic.lib"
+    "${CMAKE_CURRENT_SOURCE_DIR}/ext/qhull/lib/qhullstatic_r.lib"
+)
 
 #--------------------------------------------------------------------
 # Handle external resources
