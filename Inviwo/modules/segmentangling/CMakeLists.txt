@@ -9,6 +9,7 @@ set(HEADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/processors/loadcontourtree.h
     ${CMAKE_CURRENT_SOURCE_DIR}/processors/segmentationidraycaster.h
     ${CMAKE_CURRENT_SOURCE_DIR}/processors/volumecollectiongenerator.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/processors/volumeexportgenerator.h
     ${CMAKE_CURRENT_SOURCE_DIR}/processors/volumesliceoverlay.h
 
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../ContourTree/constants.h
@@ -33,6 +34,7 @@ set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/processors/loadcontourtree.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/processors/segmentationidraycaster.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/processors/volumecollectiongenerator.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/processors/volumeexportgenerator.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/processors/volumesliceoverlay.cpp
 
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../ContourTree/ContourTreeData.cpp

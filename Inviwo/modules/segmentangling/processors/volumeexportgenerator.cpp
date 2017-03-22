@@ -1,0 +1,113 @@
+#include "volumeexportgenerator.h"
+
+#include <modules/opengl/shader/shaderutils.h>
+#include <modules/opengl/volume/volumegl.h>
+
+#include <inviwo/core/interaction/events/keyboardkeys.h>
+
+namespace inviwo {
+
+namespace {
+} // namespace
+
+const ProcessorInfo VolumeExportGenerator::processorInfo_{
+    "bock.volumeexportgenerator",  // Class identifier
+    "Volume Export Generator",            // Display name
+    "Volume Operation",            // Category
+    CodeState::Experimental,             // Code state
+    Tags::GL                       // Tags
+};
+
+VolumeExportGenerator::VolumeExportGenerator()
+    : Processor()
+    , _inportData("volumeinportdata")
+    , _inportIdentifiers("volumeinportidentifiers")
+    , _inportFeatureMapping("inportfeaturemapping")
+    , _basePath("_basePath", "Save Base Path")
+    , _saveVolumes("_saveVolumes", "Save Volumes")
+    , _saveVolumesFlag(false)
+{
+    addPort(_inportData);
+    addPort(_inportIdentifiers);
+    addPort(_inportFeatureMapping);
+
+    addProperty(_basePath);
+    _saveVolumes.onChange([this]() { _saveVolumesFlag = true; });
+    addProperty(_saveVolumes);
+}
+
+const ProcessorInfo VolumeExportGenerator::getProcessorInfo() const {
+    return processorInfo_;
+}
+
+#pragma optimize("", off)
+
+void VolumeExportGenerator::process() {
+    if (!_saveVolumesFlag || !_inportData.hasData() || !_inportIdentifiers.hasData()) {
+        return;
+    }
+
+    const Volume& dataVolume = *_inportData.getData();
+    const VolumeRAM& identifierVolume = *(_inportIdentifiers.getData()->getRepresentation<VolumeRAM>());
+    const uint32_t* identifierData = reinterpret_cast<const uint32_t*>(identifierVolume.getData());
+
+    LogInfo("Inverting mapping information");
+
+
+    const ContourInformation& features = *_inportFeatureMapping.getData();
+
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, features.ssbo);
+    // We jump ahead one because the first value in the ssbo contains the numebr of features
+    const uint32_t* idMapping = reinterpret_cast<const uint32_t*>(glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_READ_ONLY)) + 1;
+
+    // Some of the features might not contain any information at all, so we filter those
+    // in advance for some more rapid saving
+    const size_t size = identifierVolume.getDimensions().x * identifierVolume.getDimensions().y * identifierVolume.getDimensions().z;
+    std::vector<bool> usefulFeature(features.nFeatures, false);
+    for (size_t i = 0; i < size; ++i) {
+        usefulFeature[idMapping[i]] = true;
+    }
+
+    auto factory = getNetwork()->getApplication()->getDataWriterFactory();
+    auto writer = factory->template getWriterForTypeAndExtension<Volume>("dat");
+
+    LogInfo("Saving " << features.nFeatures << " volumes");
+    for (size_t iFeature = 0; iFeature < features.nFeatures; ++iFeature) {
+        if (!usefulFeature[iFeature]) {
+            LogInfo("Skippping empty feature " << iFeature);
+            continue;
+        }
+        LogInfo("Starting volume " << iFeature);
+
+        Volume* v = dataVolume.clone();
+        VolumeRAM* rep = v->getEditableRepresentation<VolumeRAM>();
+        uint8_t* data = reinterpret_cast<uint8_t*>(rep->getData());
+
+        LogInfo("Creating volume " << iFeature);
+        for (size_t x = 0; x < rep->getDimensions().x; ++x) {
+            for (size_t y = 0; y < rep->getDimensions().y; ++y) {
+                for (size_t z = 0; z < rep->getDimensions().z; ++z) {
+                    const uint64_t idx = VolumeRAM::posToIndex({ x, y, z }, rep->getDimensions());
+
+                    const uint32_t id = identifierData[idx];
+
+                    if (idMapping[id] != iFeature) {
+                        data[idx] = 0;
+                    }
+                }
+            }
+        }
+
+        const std::string fileName = _basePath.get() + "__" + std::to_string(iFeature) + ".dat";
+        LogInfo("Saving volume " << iFeature << ": " << fileName);
+
+        writer->writeData(v, fileName);
+        delete v;
+    }
+
+    glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
+}
+
+#pragma optimize("", on)
+
+}  // namespace

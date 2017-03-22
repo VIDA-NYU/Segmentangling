@@ -5,6 +5,7 @@
 #include <modules/segmentangling/processors/loadcontourtree.h>
 #include <modules/segmentangling/processors/segmentationidraycaster.h>
 #include <modules/segmentangling/processors/volumecollectiongenerator.h>
+#include <modules/segmentangling/processors/volumeexportgenerator.h>
 #include <modules/segmentangling/processors/volumesliceoverlay.h>
 
 namespace inviwo {
@@ -21,6 +22,7 @@ SegmentanglingModule::SegmentanglingModule(InviwoApplication* app)
     registerProcessor<LoadContourTree>();
     registerProcessor<SegmentationIdRaycaster>();
     registerProcessor<VolumeCollectionGenerator>();
+    registerProcessor<VolumeExportGenerator>();
     registerProcessor<VolumeSliceOverlay>();
 }
 
