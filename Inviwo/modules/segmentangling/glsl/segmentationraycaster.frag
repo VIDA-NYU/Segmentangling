@@ -87,6 +87,8 @@ uniform bool performFeatureLookup;
 
 uniform bool hasNegativeData;
 
+bool foundPickingData = false;
+
 #define ERT_THRESHOLD 0.99  // threshold for early ray termination
 
 vec4 rayTraversal(vec3 entryPoint, vec3 exitPoint, vec2 texCoords, float backgroundDepth) {
@@ -109,20 +111,6 @@ vec4 rayTraversal(vec3 entryPoint, vec3 exitPoint, vec2 texCoords, float backgro
 
     vec4 backgroundColor = vec4(0);
     float bgTDepth = -1;
-#ifdef HAS_BACKGROUND
-    {
-        backgroundColor = texture(bgColor, texCoords);
-        float depthV = texture(bgDepth, texCoords).x;
-        if (depthV != 1) {  // convert to raycasting depth
-            bgTDepth = calculateTValueFromDepthValue(
-                camera, depthV, texture(entryDepth, texCoords).x, texture(exitDepth, texCoords).x);
-        }
-    }
-
-    if (bgTDepth < 0) {
-        result = backgroundColor;
-    }
-#endif
 
     while (t < tEnd) {
         samplePos = entryPoint + t * rayDirection;
@@ -142,6 +130,11 @@ vec4 rayTraversal(vec3 entryPoint, vec3 exitPoint, vec2 texCoords, float backgro
                     const float normFeature = float(feature + 1) / float(contour.nFeatures);
                     color.rgb = colormap(normFeature).rgb;
                 }
+
+                if (!foundPickingData) {
+                    PickingData = vec4(float(feature + 1) / 255);
+                    foundPickingData = true;
+                }
             }
         }
         else {
@@ -152,13 +145,20 @@ vec4 rayTraversal(vec3 entryPoint, vec3 exitPoint, vec2 texCoords, float backgro
                     const float normFeature = float(feature + 1) / float(contour.nFeatures);
                     color.rgb = colormap(normFeature).rgb;
                 }
+
+                if (!foundPickingData) {
+                    PickingData = vec4(float(feature + 1) / 255);
+                    foundPickingData = true;
+                }
+
             }
         }
 
         if (hasNegativeData) {
             const uint negativeFeature = negativeContour.values[segVoxel];
             if (negativeFeature != -1) {
-                color = vec4(0.0);
+                color.a *= 0.25;
+                color.rgb *= 0.35;
             }
         }
 
@@ -215,18 +215,9 @@ void main() {
     vec4 color = vec4(0);
 
     float backgroundDepth = 1;
-#ifdef HAS_BACKGROUND
-    color = texture(bgColor, texCoords);
-    gl_FragDepth = backgroundDepth = texture(bgDepth, texCoords).x;
-    PickingData = texture(bgPicking, texCoords);
-#else
     PickingData = vec4(0);
     if (entryPoint == exitPoint) {
         discard;
     }
-#endif
-    if (entryPoint != exitPoint) {
-        color = rayTraversal(entryPoint, exitPoint, texCoords, backgroundDepth);
-    }
-    FragData0 = color;
+    FragData0 = rayTraversal(entryPoint, exitPoint, texCoords, backgroundDepth);
 }

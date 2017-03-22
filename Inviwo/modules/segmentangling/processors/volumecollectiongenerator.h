@@ -37,6 +37,7 @@ protected:
     ButtonProperty _removeVolume;
     
     OptionPropertyInt _modification;
+    StringProperty _modificationText;
     IntProperty _featureToModify;
     ButtonProperty _modify;
 
@@ -69,6 +70,7 @@ protected:
     FloatVec3Property _slice2Position;
     FloatVec3Property _slice3Position;
 
+    int _lastChangedValue;
     FloatVec3Property& _lastChangedSlicePosition;
 
     StringProperty _featureNumberFound;

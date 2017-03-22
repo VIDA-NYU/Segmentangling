@@ -17,6 +17,7 @@
 #include <inviwo/core/ports/volumeport.h>
 #include <modules/opengl/shader/shader.h>
 #include <modules/segmentangling/common.h>
+#include <inviwo/core/interaction/pickingmapper.h>
 
 namespace inviwo {
 
@@ -34,6 +35,8 @@ public:
 
 protected:
     virtual void process() override;
+    void eventUpdateMousePos(Event* e);
+
 
     //void onVolumeChange();
     void toggleShading(Event*);
@@ -62,6 +65,10 @@ protected:
     BoolProperty _colorById;
     BoolProperty _filterById;
     IntProperty _id;
+
+    BoolProperty _enablePicking;
+    EventProperty _mousePositionTracker;
+    IntProperty _selectedFeature;
 
     EventProperty _toggleShading;
 };

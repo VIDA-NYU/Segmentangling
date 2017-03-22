@@ -13,6 +13,7 @@
 #include <modules/opengl/volume/volumeutils.h>
 #include <inviwo/core/common/inviwoapplication.h>
 #include <inviwo/core/util/rendercontext.h>
+#include <inviwo/core/interaction/events/mouseevent.h>
 
 namespace inviwo {
 
@@ -46,6 +47,11 @@ SegmentationIdRaycaster::SegmentationIdRaycaster()
     , _positionIndicator("positionindicator", "Position Indicator")
     , _toggleShading("toggleShading", "Toggle Shading", [this](Event* e) { toggleShading(e); },
                      IvwKey::L)
+    , _enablePicking("_enablePicking", "Enable Picking", false)
+    , _mousePositionTracker("mousePositionTracker", "Mouse Position Tracker",
+        [this](Event* e) { eventUpdateMousePos(e); },
+        MouseButton::None, MouseState::Move)
+    , _selectedFeature("_selectedFeature", "Selected Feature")
 {
                      
     _shader.onReload([this]() { invalidate(InvalidationLevel::InvalidResources); });
@@ -92,6 +98,15 @@ SegmentationIdRaycaster::SegmentationIdRaycaster()
     addProperty(_colorById);
     addProperty(_filterById);
     addProperty(_id);
+
+    addProperty(_enablePicking);
+
+    _mousePositionTracker.setVisible(false);
+    _mousePositionTracker.setCurrentStateAsDefault();
+    addProperty(_mousePositionTracker);
+
+    _selectedFeature.setReadOnly(true);
+    addProperty(_selectedFeature);
 }
 
 const ProcessorInfo SegmentationIdRaycaster::getProcessorInfo() const {
@@ -107,21 +122,24 @@ void SegmentationIdRaycaster::initializeResources() {
     _shader.build();
 }
 
-//void SegmentationIdRaycaster::onVolumeChange() {
-//    if (_volumePort.hasData()) {
-//        size_t channels = _volumePort.getData()->getDataFormat()->getComponents();
-//
-//        if (channels == _channel.size()) return;
-//
-//        std::vector<OptionPropertyIntOption> channelOptions;
-//        for (size_t i = 0; i < channels; i++) {
-//            channelOptions.emplace_back("Channel " + toString(i+1), "Channel " + toString(i+1),
-//                                        static_cast<int>(i));
-//        }
-//        _channel.replaceOptions(channelOptions);
-//        _channel.setCurrentStateAsDefault();
-//    }
-//}
+//#pragma optimize("", off)
+
+void SegmentationIdRaycaster::eventUpdateMousePos(Event* e) {
+    if (!_enablePicking || !_volumePort.hasData()) {
+        return;
+    }
+
+    const Volume& volume = *_volumePort.getData();
+    MouseEvent* mouseEvent = static_cast<MouseEvent*>(e);
+
+    const Image& img = *_outport.getData();
+    const Layer& depth = *img.getPickingLayer();
+    const LayerRAM& ram = *depth.getRepresentation<LayerRAM>();
+
+    _selectedFeature = int(ram.getAsDouble(mouseEvent->pos()));
+}
+
+//#pragma optimize("", on)
 
 void SegmentationIdRaycaster::process() {
     if (_volumePort.isChanged()) {
