@@ -118,24 +118,6 @@ VolumeCollectionGenerator::VolumeCollectionGenerator()
     });
     addProperty(_nVolumes);
     _currentVolume.setMaxValue(_nVolumes - 1);
-    //_addVolume.onChange([this]() {
-    //    logStatus("beg");
-    //    _currentVolume.setMaxValue(_nVolumes - 1);
-    //    _nVolumes = _nVolumes + 1;
-    //    _currentVolume = _nVolumes.get();
-    //    logStatus("end");
-    //});
-    //addProperty(_addVolume);
-    //_removeVolume.onChange([this]() {
-    //    logStatus("beg");
-    //    _currentVolume = _currentVolume - 1;
-    //    _nVolumes = _nVolumes - 1;
-    //    _currentVolume.setMaxValue(_nVolumes - 1);
-    //    _dirty.removeVolume = true;
-    //    //_dirty.mapping = true;
-    //    logStatus("end");
-    //});
-    //addProperty(_removeVolume);
     
     // @FRAGILE:  Sync this with the shader
     _modification.addOption("a", "Add", ModificationAdd);
@@ -176,7 +158,7 @@ VolumeCollectionGenerator::VolumeCollectionGenerator()
 const ProcessorInfo VolumeCollectionGenerator::getProcessorInfo() const {
     return processorInfo_;
 }
-#pragma optimize("", off)
+//#pragma optimize("", off)
 
 void VolumeCollectionGenerator::process() {
     if (!_information) {
@@ -191,7 +173,6 @@ void VolumeCollectionGenerator::process() {
                 m = uint32_t(-1);
             }
         }
-        //_dirty.mapping = true;
         _dirty.removeVolume = false;
     }
 
@@ -199,7 +180,6 @@ void VolumeCollectionGenerator::process() {
         for (uint32_t& m : _mappingData) {
             m = uint32_t(-1);
         }
-        //_dirty.mapping = true;
         _dirty.clearAllVolumes = false;
     }
 
@@ -257,7 +237,7 @@ void VolumeCollectionGenerator::process() {
 
     _outportContour.setData(_information);
 }
-#pragma optimize("", on)
+//#pragma optimize("", on)
 
 void VolumeCollectionGenerator::selectVolume(Event* e, int volume) {
     _currentVolume = volume;
