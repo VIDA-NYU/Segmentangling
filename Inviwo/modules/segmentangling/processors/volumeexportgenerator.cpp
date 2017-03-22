@@ -25,6 +25,8 @@ VolumeExportGenerator::VolumeExportGenerator()
     , _inportData("volumeinportdata")
     , _inportIdentifiers("volumeinportidentifiers")
     , _inportFeatureMapping("inportfeaturemapping")
+    , _featherFactor("_featherFactor", "Feathering", 0.f, 0.f, 0.001f)
+    , _shouldOverwriteFiles("_shouldOverwriteFiles", "Should Overwrite files", true)
     , _basePath("_basePath", "Save Base Path")
     , _saveVolumes("_saveVolumes", "Save Volumes")
     , _saveVolumesFlag(false)
@@ -33,6 +35,8 @@ VolumeExportGenerator::VolumeExportGenerator()
     addPort(_inportIdentifiers);
     addPort(_inportFeatureMapping);
 
+    addProperty(_featherFactor);
+    addProperty(_shouldOverwriteFiles);
     addProperty(_basePath);
     _saveVolumes.onChange([this]() { _saveVolumesFlag = true; });
     addProperty(_saveVolumes);
@@ -54,7 +58,6 @@ void VolumeExportGenerator::process() {
     const uint32_t* identifierData = reinterpret_cast<const uint32_t*>(identifierVolume.getData());
 
     LogInfo("Inverting mapping information");
-
 
     const ContourInformation& features = *_inportFeatureMapping.getData();
 
@@ -127,7 +130,7 @@ void VolumeExportGenerator::process() {
                     qh_findbestfacet(hull.qh(), pt, qh_False, &dist, &isOutside);
 
                     // Remove all the voxels that are outside of the convex hull
-                    if (isOutside) {
+                    if (isOutside && dist > _featherFactor.get()) {
                         data[idx] = 0;
                     }
                 }
@@ -137,6 +140,7 @@ void VolumeExportGenerator::process() {
         const std::string fileName = _basePath.get() + "__" + std::to_string(iFeature) + ".dat";
         LogInfo("Saving volume " << iFeature << ": " << fileName);
 
+        writer->setOverwrite(_shouldOverwriteFiles);
         writer->writeData(v, fileName);
         delete v;
     }

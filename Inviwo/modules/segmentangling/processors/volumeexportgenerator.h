@@ -28,6 +28,9 @@ protected:
     VolumeInport _inportIdentifiers;
     ContourInport _inportFeatureMapping;
 
+    FloatProperty _featherFactor;
+
+    BoolProperty _shouldOverwriteFiles;
     StringProperty _basePath;
     ButtonProperty _saveVolumes;
 
