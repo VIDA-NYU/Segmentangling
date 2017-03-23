@@ -31,6 +31,7 @@ protected:
     OptionPropertyInt _mode;
     FloatProperty _contourTreeLevel;
     IntProperty _nFeatures;
+    FloatProperty _quasiSimplificationFactor;
     StringProperty _contourTreeFile;
 
     contourtree::TopologicalFeatures _topologicalFeatures;

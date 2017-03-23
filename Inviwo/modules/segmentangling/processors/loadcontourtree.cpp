@@ -40,6 +40,7 @@ LoadContourTree::LoadContourTree()
     , _mode("mode", "Selection mode")
     , _contourTreeLevel("contourTreeLevel", "Contour Tree Level", 0.f, 0.f, 1.f)
     , _nFeatures("nFeatures", "Number of Features", 0, 0, 10000)
+    , _quasiSimplificationFactor("_quasiSimplificationFactor", "Quasi Simplification Factor", 0.f, 0.f, 1.f)
     , _contourTreeFile("contourTreeFile", "Contour Tree File")
     , _fileIsDirty(false)
     , _dataIsDirty(false)
@@ -57,6 +58,9 @@ LoadContourTree::LoadContourTree()
 
     _nFeatures.onChange([&](){ _dataIsDirty = true; });
     addProperty(_nFeatures);
+
+    _quasiSimplificationFactor.onChange([&]() { _dataIsDirty = true; });
+    addProperty(_quasiSimplificationFactor);
 
     _contourTreeFile.onChange([&]() { _fileIsDirty = true; });
     addProperty(_contourTreeFile);
@@ -84,7 +88,7 @@ void LoadContourTree::process() {
         std::vector<contourtree::Feature> features = [m = _mode.get(), this]() {
             switch (m) {
                 case ModeFeatures:
-                    return _topologicalFeatures.getFeatures(_nFeatures, 0.f);
+                    return _topologicalFeatures.getFeatures(_nFeatures, 0.f, _quasiSimplificationFactor);
                 case ModeThreshold:
                     return _topologicalFeatures.getFeatures(-1, _contourTreeLevel);
                 default:
