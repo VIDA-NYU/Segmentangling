@@ -8,6 +8,8 @@
 #include "libqhullcpp/Qhull.h"
 #include "libqhullcpp/QhullFacetList.h"
 
+using namespace orgQhull;
+
 namespace inviwo {
 
 namespace {
@@ -69,6 +71,8 @@ void VolumeExportGenerator::process() {
     // We jump ahead one because the first value in the ssbo contains the numebr of features
     const uint32_t* idMapping = reinterpret_cast<const uint32_t*>(glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_READ_ONLY)) + 1;
 
+
+
     // Some of the features might not contain any information at all, so we filter those
     // in advance for some more rapid saving
     const size_t size = identifierVolume.getDimensions().x * identifierVolume.getDimensions().y * identifierVolume.getDimensions().z;
@@ -80,9 +84,12 @@ void VolumeExportGenerator::process() {
         }
     }
 
-    using namespace orgQhull;
+
+
     std::vector<Qhull> convexHulls(features.nFeatures);
 
+
+    // Lambda to construct the convex hull
     auto constructConvexHull = [&usefulFeature, &dataVolume, &convexHulls, &idMapping, &identifierData, this](size_t iFeature) {
         if (!usefulFeature[iFeature]) {
             LogInfo("Skippping empty feature " << iFeature);
@@ -90,8 +97,6 @@ void VolumeExportGenerator::process() {
         }
         LogInfo("Starting volume " << iFeature);
 
-        //Volume* v = dataVolume.clone();
-        //VolumeRAM* rep = v->getEditableRepresentation<VolumeRAM>();
         const VolumeRAM* rep = dataVolume.getRepresentation<VolumeRAM>();
         const uint8_t* data = reinterpret_cast<const uint8_t*>(rep->getData());
 
@@ -119,6 +124,9 @@ void VolumeExportGenerator::process() {
         convexHulls[iFeature].runQhull(f, 3, points.size() / 3, points.data(), f);
     };
     
+
+
+    // Construct the convex hulls
     std::vector<std::thread> threads;
     LogInfo("Saving " << features.nFeatures << " volumes");
     for (size_t iFeature = 0; iFeature < features.nFeatures; ++iFeature) {
@@ -127,14 +135,17 @@ void VolumeExportGenerator::process() {
         );
     }
 
+
+
+    // We need to wait for all threads to finish before we can continue
     for (std::thread& t : threads) {
         t.join();
     }
 
 
+    // Lambda expression to create the volumes from the convex hulls
     auto createVolumes = [&usefulFeature, &dataVolume, &convexHulls, this](uint32_t iFeature, Volume* volume) {
         if (!usefulFeature[iFeature]) {
-            LogInfo("Skippping empty feature " << iFeature);
             return;
         }
         LogInfo("Creating volume " << iFeature);
@@ -167,6 +178,8 @@ void VolumeExportGenerator::process() {
         }
     };
 
+
+    // Construct the volumes from the convex hulls
     std::vector<Volume*> volumes;
     for (size_t iFeature = 0; iFeature < features.nFeatures; ++iFeature) {
         Volume* volume = dataVolume.clone();
@@ -174,55 +187,36 @@ void VolumeExportGenerator::process() {
         volumes.push_back(volume);
     }
     
+
+    // Lambda expression to save the volumes
+    auto saveVolumes = [&volumes, this](size_t iFeature){
+        const std::string fileName = _basePath.get() + "__" + std::to_string(iFeature) + ".dat";
+        LogInfo("Saving volume " << iFeature << ": " << fileName);
+
+        auto factory = getNetwork()->getApplication()->getDataWriterFactory();
+        auto writer = factory->template getWriterForTypeAndExtension<Volume>("dat");
+        writer->setOverwrite(_shouldOverwriteFiles);
+        writer->writeData(volumes[iFeature], fileName);
+    };
+
+
+
+    // Save the volumes
+    for (size_t iFeature = 0; iFeature < features.nFeatures; ++iFeature) {
+        if (!usefulFeature[iFeature]) {
+            continue;
+        }
+
+        threads[iFeature].join();
+        threads[iFeature] = std::thread(
+            saveVolumes, iFeature
+        );
+    }
+
     for (std::thread& t : threads) {
         t.join();
     }
 
-
-    auto factory = getNetwork()->getApplication()->getDataWriterFactory();
-    auto writer = factory->template getWriterForTypeAndExtension<Volume>("dat");
-
-    for (size_t iFeature = 0; iFeature < features.nFeatures; ++iFeature) {
-        //if (!usefulFeature[iFeature]) {
-        //    LogInfo("Skippping empty feature " << iFeature);
-        //    continue;
-        //}
-        //LogInfo("Creating volume " << iFeature);
-
-        //Volume* v = dataVolume.clone();
-        //VolumeRAM* rep = v->getEditableRepresentation<VolumeRAM>();
-        //uint8_t* data = reinterpret_cast<uint8_t*>(rep->getData());
-
-        //for (size_t x = 0; x < rep->getDimensions().x; ++x) {
-        //    for (size_t y = 0; y < rep->getDimensions().y; ++y) {
-        //        for (size_t z = 0; z < rep->getDimensions().z; ++z) {
-        //            const uint64_t idx = VolumeRAM::posToIndex({ x, y, z }, rep->getDimensions());
-
-        //            double pt[3] = {
-        //                static_cast<double>(x) / static_cast<double>(rep->getDimensions().x),
-        //                static_cast<double>(y) / static_cast<double>(rep->getDimensions().y),
-        //                static_cast<double>(z) / static_cast<double>(rep->getDimensions().z)
-        //            };
-
-        //            double dist;
-        //            boolT isOutside;
-        //            qh_findbestfacet(convexHulls[iFeature].qh(), pt, qh_False, &dist, &isOutside);
-
-        //            // Remove all the voxels that are outside of the convex hull
-        //            if (isOutside) {
-        //                data[idx] = 0;
-        //            }
-        //        }
-        //    }
-        //}
-
-        const std::string fileName = _basePath.get() + "__" + std::to_string(iFeature) + ".dat";
-        LogInfo("Saving volume " << iFeature << ": " << fileName);
-
-        writer->setOverwrite(_shouldOverwriteFiles);
-        writer->writeData(volumes[iFeature], fileName);
-
-    }
     _outport.setData(volumes[0]);
 
     glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
