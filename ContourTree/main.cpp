@@ -229,20 +229,16 @@ void testMergeTree() {
 
 void preProcessing() {
     // the actual raw file without the extension. the extensions will be added as and when needed.
-    QString data = "../data/ContourTree/Fish_256";
+//    QString data = "../data/ContourTree/Fish_256";
+    QString data = "../data/Cameroon/Cameroon_256";
 
     std::chrono::time_point<std::chrono::system_clock> start, end;
-//    start = std::chrono::system_clock::now();
-//    Grid3D grid(256,257,471);
-//    end = std::chrono::system_clock::now();
+////    Grid3D grid(256,257,471);
+//    Grid3D grid(256,256,527);
 
 //    start = std::chrono::system_clock::now();
 //    grid.loadGrid(data + ".raw");
 //    MergeTree ct;
-////    contourtree::TreeType tree = TypeJoinTree;
-////    if(mini) {
-////        tree = TypeSplitTree;
-////    }
 //    contourtree::TreeType tree = TypeContourTree;
 //    ct.computeTree(&grid,tree);
 //    end = std::chrono::system_clock::now();
@@ -292,7 +288,7 @@ void testApi() {
 
     qDebug() << "\n\n Partitioned features";
     start = std::chrono::system_clock::now();
-    std::vector<Feature> features1 = tf.getFeaturesPart(-1,0.1f);
+    std::vector<Feature> features1 = tf.getFeatures(-1,0.1f);
     end = std::chrono::system_clock::now();
     qDebug() << "Time to get features: " << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() << "ms";
     qDebug() << "no. of features:" << features.size() << "\n";
@@ -380,7 +376,7 @@ void testFeatures() {
     TopologicalFeatures tf;
     std::chrono::time_point<std::chrono::system_clock> start, end;
     start = std::chrono::system_clock::now();
-    tf.loadData(data,true);
+    tf.loadData(data);
     std::vector<Feature> features = tf.getFeatures(20,0);
 //    std::vector<Feature> features = tf.getFeaturesPart(10,0);
     end = std::chrono::system_clock::now();
@@ -417,6 +413,91 @@ void testFeatures() {
     ip.close();
 }
 
+void testConnectivity() {
+//    QString data = "../data/ContourTree/Fish_256";
+//    Grid3D grid(256,257,471);
+
+    QString data = "../data/Cameroon/Cameroon_256";
+    Grid3D grid(256,256,527);
+
+    // read part file
+    int dimx = 256;
+    int dimy = 256;
+    int dimz = 527;
+
+    qDebug() << "reading part";
+    std::vector<uint32_t> part(dimx * dimy * dimz);
+    std::ifstream ip((data + ".part.raw").toStdString(), std::ios::binary);
+    ip.read((char *)(part.data()), part.size() * sizeof(uint32_t));
+    ip.close();
+
+
+    qDebug() << "reading ct";
+    ContourTreeData ctdata;
+    ctdata.loadBinFile(data);
+
+    uint32_t noArcs = ctdata.noArcs;
+    std::vector<QSet<uint32_t> > arcs(noArcs);
+
+    qDebug() << "arranging features";
+    for(uint32_t i = 0;i < part.size();i ++) {
+        uint32_t ano = part[i];
+        arcs[ano] << i;
+    }
+
+    for(int i = 0;i < noArcs;i ++) {
+        uint32_t from = ctdata.nodeVerts[ctdata.arcs[i].from];
+        uint32_t to = ctdata.nodeVerts[ctdata.arcs[i].to];
+        arcs[i] << from << to;
+    }
+
+    TopologicalFeatures tf;
+    std::chrono::time_point<std::chrono::system_clock> start, end;
+    start = std::chrono::system_clock::now();
+    tf.loadData(data);
+    std::vector<Feature> features = tf.getFeatures(15,0,0.3);
+    end = std::chrono::system_clock::now();
+    qDebug() << "Time to get features: " << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() << "ms";
+    qDebug() << "no. of features:" << features.size() << "\n";
+
+
+    DisjointSets<int32_t> dj;
+    QVector<int64_t> star;
+    QSet<uint32_t> comps;
+    star.resize(grid.getMaxDegree());
+    bool single = true;
+    for(int i = 0;i < features.size();i ++) {
+        qDebug() << "processing feature" << i;
+        dj = DisjointSets<int32_t>(part.size());
+        QSet<uint32_t> set;
+        for(uint32_t ano: features[i].arcs) {
+            foreach(uint32_t v, arcs[ano])
+                set << v;
+        }
+        comps.clear();
+
+        foreach(uint32_t v,set) {
+            int ct = grid.getStar(v,star);
+
+            for(int j = 0;j < ct;j ++) {
+                if(set.contains(star[j])) {
+                    dj.merge(v,star[j]);
+                }
+            }
+        }
+        foreach(uint32_t v,set) {
+            comps << dj.find(v);
+        }
+
+        if(comps.size() != 1) {
+            single = false;
+            qDebug() << "Feature" << i << "has " << comps.size() << "components" << set.size();
+        }
+    }
+
+    qDebug() << "all arcs have a single component:" << single;
+}
+
 int main(int argc, char *argv[])
 {
     QCoreApplication a(argc, argv);
@@ -428,7 +509,8 @@ int main(int argc, char *argv[])
 //    testApi();
 
 //    generateData(true);
-    testFeatures();
+//    testFeatures();
+    testConnectivity();
     exit(0);
     return a.exec();
 }

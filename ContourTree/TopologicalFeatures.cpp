@@ -4,6 +4,8 @@
 #include <QTextStream>
 #include <cassert>
 
+#include "constants.h"
+
 #include<QDebug>
 
 namespace contourtree {
@@ -39,7 +41,33 @@ void TopologicalFeatures::loadData(QString dataLocation, bool partition) {
     }
 }
 
-std::vector<Feature> TopologicalFeatures::getFeatures(int topk, float th) {
+void TopologicalFeatures::addFeature(SimplifyCT &sim, uint32_t bno, std::vector<Feature> &features, QSet<size_t> &featureSet) {
+    Branch b1 = sim.branches.at(bno);
+    Feature f;
+    f.from = ctdata.nodeVerts[b1.from];
+    f.to = ctdata.nodeVerts[b1.from];
+
+    std::deque<size_t> queue;
+    queue.push_back(bno);
+    while(queue.size() > 0) {
+        size_t b = queue.front();
+        queue.pop_front();
+        if(b != bno && featureSet.contains(b)) {
+            // this cannot happen
+            assert(false);
+        }
+        featureSet << b;
+        Branch br = sim.branches.at(b);
+        f.arcs.insert(f.arcs.end(),br.arcs.data(), br.arcs.data()+br.arcs.size());
+        for(int i = 0;i < br.children.size();i ++) {
+            uint32_t bc = br.children.at(i);
+            queue.push_back(bc);
+        }
+    }
+    features.push_back(f);
+}
+
+std::vector<Feature> TopologicalFeatures::getFeatures(int topk, float th, float secondary) {
     SimplifyCT sim;
     sim.setInput(&ctdata);
 
@@ -54,39 +82,36 @@ std::vector<Feature> TopologicalFeatures::getFeatures(int topk, float th) {
         }
         featureSet << order[i];
     }
+    size_t pos = 0;
     for(size_t _i = 0;_i < order.size();_i ++) {
         size_t i = order.size() - _i - 1;
         if(sim.removed[order[i]]) {
+            pos = _i;
             break;
         }
-        Branch b1 = sim.branches.at(order[i]);
-        Feature f;
-        f.from = ctdata.nodeVerts[b1.from];
-        f.to = ctdata.nodeVerts[b1.to];
+        addFeature(sim,order[i],features,featureSet);
+    }
 
-        size_t bno = order[i];
-        std::deque<size_t> queue;
-        queue.push_back(bno);
-        while(queue.size() > 0) {
-            size_t b = queue.front();
-            queue.pop_front();
-            if(b != bno && featureSet.contains(b)) {
-                // this cannot happen
-                assert(false);
-            }
-            Branch br = sim.branches.at(b);
-            f.arcs.insert(f.arcs.end(),br.arcs.data(), br.arcs.data()+br.arcs.size());
-            for(int i = 0;i < br.children.size();i ++) {
-                int bc = br.children.at(i);
-                queue.push_back(bc);
-            }
+    for(size_t _i = pos;_i < order.size();_i ++) {
+        size_t i = order.size() - _i - 1;
+        if(featureSet.contains(order[i])) {
+            continue;
         }
-        features.push_back(f);
+        uint32_t bno = order[i];
+        featureSet << bno;
+        Branch br = sim.branches.at(bno);
+        uint32_t from = br.from;
+        uint32_t to = br.to;
+        float per = ctdata.fnVals[to] - ctdata.fnVals[from];
+        // TODO make any leaf?
+        if(ctdata.type[to] == MAXIMUM && per >= secondary) {
+            addFeature(sim,bno,features,featureSet);
+        }
     }
     return features;
 }
 
-std::vector<Feature> TopologicalFeatures::getFeaturesPart(int topk, float th) {
+std::vector<Feature> TopologicalFeatures::getPartitionedExtremaFeatures(int topk, float th) {
     std::vector<Feature> features;
 
     QSet<size_t> featureSet;
@@ -118,6 +143,52 @@ std::vector<Feature> TopologicalFeatures::getFeaturesPart(int topk, float th) {
             queue.pop_front();
             if(b != bno && featureSet.contains(b)) {
                 continue;
+            }
+            Branch br = sim.branches.at(b);
+            f.arcs.insert(f.arcs.end(),br.arcs.data(), br.arcs.data()+br.arcs.size());
+            for(int i = 0;i < br.children.size();i ++) {
+                int bc = br.children.at(i);
+                queue.push_back(bc);
+            }
+        }
+        features.push_back(f);
+    }
+    return features;
+}
+
+std::vector<Feature> TopologicalFeatures::getArcFeatures(int topk, float th) {
+    SimplifyCT sim;
+    sim.setInput(&ctdata);
+
+    sim.simplify(order,topk,th,wts);
+
+    std::vector<Feature> features;
+    QSet<size_t> featureSet;
+    for(size_t _i = 0;_i < sim.branches.size();_i ++) {
+        if(sim.removed[_i]) {
+            continue;
+        }
+        featureSet << _i;
+    }
+    for(size_t _i = 0;_i < sim.branches.size();_i ++) {
+        size_t i = _i;
+        if(sim.removed[i]) {
+            continue;
+        }
+        Branch b1 = sim.branches.at(i);
+        Feature f;
+        f.from = ctdata.nodeVerts[b1.from];
+        f.to = ctdata.nodeVerts[b1.to];
+
+        size_t bno = i;
+        std::deque<size_t> queue;
+        queue.push_back(bno);
+        while(queue.size() > 0) {
+            size_t b = queue.front();
+            queue.pop_front();
+            if(b != bno && featureSet.contains(b)) {
+                // this cannot happen
+                assert(false);
             }
             Branch br = sim.branches.at(b);
             f.arcs.insert(f.arcs.end(),br.arcs.data(), br.arcs.data()+br.arcs.size());
