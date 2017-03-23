@@ -80,20 +80,20 @@ void VolumeExportGenerator::process() {
         }
     }
 
-    auto factory = getNetwork()->getApplication()->getDataWriterFactory();
-    auto writer = factory->template getWriterForTypeAndExtension<Volume>("dat");
+    using namespace orgQhull;
+    std::vector<Qhull> convexHulls(features.nFeatures);
 
-    LogInfo("Saving " << features.nFeatures << " volumes");
-    for (size_t iFeature = 0; iFeature < features.nFeatures; ++iFeature) {
+    auto constructConvexHull = [&usefulFeature, &dataVolume, &convexHulls, &idMapping, &identifierData, this](size_t iFeature) {
         if (!usefulFeature[iFeature]) {
             LogInfo("Skippping empty feature " << iFeature);
-            continue;
+            return;
         }
         LogInfo("Starting volume " << iFeature);
 
-        Volume* v = dataVolume.clone();
-        VolumeRAM* rep = v->getEditableRepresentation<VolumeRAM>();
-        uint8_t* data = reinterpret_cast<uint8_t*>(rep->getData());
+        //Volume* v = dataVolume.clone();
+        //VolumeRAM* rep = v->getEditableRepresentation<VolumeRAM>();
+        const VolumeRAM* rep = dataVolume.getRepresentation<VolumeRAM>();
+        const uint8_t* data = reinterpret_cast<const uint8_t*>(rep->getData());
 
         std::vector<double> points;
 
@@ -111,18 +111,38 @@ void VolumeExportGenerator::process() {
                         points.push_back(static_cast<double>(y) / static_cast<double>(rep->getDimensions().y));
                         points.push_back(static_cast<double>(z) / static_cast<double>(rep->getDimensions().z));
                     }
-
-                    
                 }
             }
         }
 
-        using namespace orgQhull;
         const char* f = "";
-        Qhull hull(f, 3, points.size() / 3, points.data(), f);
+        convexHulls[iFeature].runQhull(f, 3, points.size() / 3, points.data(), f);
+    };
+    
+    std::vector<std::thread> threads;
+    LogInfo("Saving " << features.nFeatures << " volumes");
+    for (size_t iFeature = 0; iFeature < features.nFeatures; ++iFeature) {
+        threads.push_back(
+            std::thread(constructConvexHull, iFeature)
+        );
+    }
+
+    for (std::thread& t : threads) {
+        t.join();
+    }
 
 
+    auto createVolumes = [&usefulFeature, &dataVolume, &convexHulls, this](uint32_t iFeature, Volume* volume) {
+        if (!usefulFeature[iFeature]) {
+            LogInfo("Skippping empty feature " << iFeature);
+            return;
+        }
         LogInfo("Creating volume " << iFeature);
+
+        //*volume = dataVolume.clone();
+        VolumeRAM* rep = volume->getEditableRepresentation<VolumeRAM>();
+        uint8_t* data = reinterpret_cast<uint8_t*>(rep->getData());
+
         for (size_t x = 0; x < rep->getDimensions().x; ++x) {
             for (size_t y = 0; y < rep->getDimensions().y; ++y) {
                 for (size_t z = 0; z < rep->getDimensions().z; ++z) {
@@ -136,97 +156,74 @@ void VolumeExportGenerator::process() {
 
                     double dist;
                     boolT isOutside;
-                    qh_findbestfacet(hull.qh(), pt, qh_False, &dist, &isOutside);
+                    qh_findbestfacet(convexHulls[iFeature].qh(), pt, qh_False, &dist, &isOutside);
 
                     // Remove all the voxels that are outside of the convex hull
-                    //if (isOutside && dist > _featherFactor.get()) {
                     if (isOutside) {
                         data[idx] = 0;
                     }
-
-
-
                 }
             }
         }
+    };
 
-        // Finding the dominant axis
-        //std::vector<QhullFacet> list = hull.facetList().toStdVector();
-        //using FacetPair = std::pair<size_t, size_t>;
-        //std::vector<FacetPair> facetPairs;
-        //for (size_t i = 0; i < list.size(); ++i) {
-        //    for (size_t j = i; j < list.size(); ++j) {
-        //        facetPairs.emplace_back(i, j);
-        //    }
+    std::vector<Volume*> volumes;
+    for (size_t iFeature = 0; iFeature < features.nFeatures; ++iFeature) {
+        Volume* volume = dataVolume.clone();
+        threads[iFeature] = std::thread(createVolumes, iFeature, volume);
+        volumes.push_back(volume);
+    }
+    
+    for (std::thread& t : threads) {
+        t.join();
+    }
+
+
+    auto factory = getNetwork()->getApplication()->getDataWriterFactory();
+    auto writer = factory->template getWriterForTypeAndExtension<Volume>("dat");
+
+    for (size_t iFeature = 0; iFeature < features.nFeatures; ++iFeature) {
+        //if (!usefulFeature[iFeature]) {
+        //    LogInfo("Skippping empty feature " << iFeature);
+        //    continue;
         //}
+        //LogInfo("Creating volume " << iFeature);
 
-        //std::sort(
-        //    facetPairs.begin(),
-        //    facetPairs.end(),
-        //    [&list](const FacetPair& lhs, const FacetPair& rhs) {
-        //        glm::dvec3 lhsFirst = glm::make_vec3(list[lhs.first].getCenter().coordinates());
-        //        glm::dvec3 lhsSecond = glm::make_vec3(list[lhs.second].getCenter().coordinates());
-        //        double lhsLength = glm::distance(lhsFirst, lhsSecond);
-        //         
-        //        glm::dvec3 rhsFirst = glm::make_vec3(list[rhs.first].getCenter().coordinates());
-        //        glm::dvec3 rhsSecond = glm::make_vec3(list[rhs.second].getCenter().coordinates());
-        //        double rhsLength = glm::distance(rhsFirst, rhsSecond);
+        //Volume* v = dataVolume.clone();
+        //VolumeRAM* rep = v->getEditableRepresentation<VolumeRAM>();
+        //uint8_t* data = reinterpret_cast<uint8_t*>(rep->getData());
 
-        //        // Put the longest length first in the vector
-        //        return lhsLength > rhsLength;
-        //    }
-        //);
-
-        //glm::dvec3 z =
-        //    glm::make_vec3(list[facetPairs[0].second].getCenter().coordinates()) -
-        //    glm::make_vec3(list[facetPairs[0].first].getCenter().coordinates());
-
-        //glm::dvec3 second = 
-        //    glm::make_vec3(list[facetPairs[1].second].getCenter().coordinates()) -
-        //    glm::make_vec3(list[facetPairs[1].first].getCenter().coordinates());
-
-        //glm::dvec3 y = glm::cross(z, second);
-        //glm::dvec3 x = -glm::cross(z, y);
-
-        //glm::dmat3 rotMat = {
-        //    x.x, y.x, z.x,
-        //    x.y, y.y, z.y,
-        //    x.z, y.z, z.z
-        //};
-
-        //Volume* vClone = v->clone();
-        //const uint8_t* srcData = reinterpret_cast<const uint8_t*>(vClone->getRepresentation<VolumeRAM>()->getData());
-        //LogInfo("Rotating volume");
         //for (size_t x = 0; x < rep->getDimensions().x; ++x) {
         //    for (size_t y = 0; y < rep->getDimensions().y; ++y) {
         //        for (size_t z = 0; z < rep->getDimensions().z; ++z) {
-        //            const glm::dvec3 posOld = glm::dvec3(x, y, z);
+        //            const uint64_t idx = VolumeRAM::posToIndex({ x, y, z }, rep->getDimensions());
 
-        //            const uint64_t idxOld = VolumeRAM::posToIndex({ x, y, z }, rep->getDimensions());
+        //            double pt[3] = {
+        //                static_cast<double>(x) / static_cast<double>(rep->getDimensions().x),
+        //                static_cast<double>(y) / static_cast<double>(rep->getDimensions().y),
+        //                static_cast<double>(z) / static_cast<double>(rep->getDimensions().z)
+        //            };
 
-        //            const glm::dvec3 posNew = rotMat * posOld;
-        //            const glm::size3_t posNewClamped = glm::clamp(
-        //                glm::size3_t(posNew),
-        //                glm::size3_t(0),
-        //                rep->getDimensions()
-        //            );
+        //            double dist;
+        //            boolT isOutside;
+        //            qh_findbestfacet(convexHulls[iFeature].qh(), pt, qh_False, &dist, &isOutside);
 
-        //            const uint64_t idxNew = VolumeRAM::posToIndex({ posNewClamped.x, posNewClamped.y, posNewClamped.z }, rep->getDimensions());
-
-        //            data[idxNew] = srcData[idxOld];
+        //            // Remove all the voxels that are outside of the convex hull
+        //            if (isOutside) {
+        //                data[idx] = 0;
+        //            }
         //        }
         //    }
         //}
-
 
         const std::string fileName = _basePath.get() + "__" + std::to_string(iFeature) + ".dat";
         LogInfo("Saving volume " << iFeature << ": " << fileName);
 
         writer->setOverwrite(_shouldOverwriteFiles);
-        writer->writeData(v, fileName);
+        writer->writeData(volumes[iFeature], fileName);
 
-        _outport.setData(v);
     }
+    _outport.setData(volumes[0]);
 
     glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
 }
