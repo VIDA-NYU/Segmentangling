@@ -28,7 +28,6 @@ VolumeExportGenerator::VolumeExportGenerator()
     , _inportData("volumeinportdata")
     , _inportIdentifiers("volumeinportidentifiers")
     , _inportFeatureMapping("inportfeaturemapping")
-    , _outport("_outport")
     , _featherFactor("_featherFactor", "Feathering", 0.f, 0.f, 0.01f)
     , _shouldOverwriteFiles("_shouldOverwriteFiles", "Should Overwrite files", true)
     , _basePath("_basePath", "Save Base Path")
@@ -38,7 +37,6 @@ VolumeExportGenerator::VolumeExportGenerator()
     addPort(_inportData);
     addPort(_inportIdentifiers);
     addPort(_inportFeatureMapping);
-    addPort(_outport);
 
     //addProperty(_featherFactor);
     addProperty(_shouldOverwriteFiles);
@@ -164,44 +162,65 @@ void VolumeExportGenerator::process() {
         VolumeRAM* rep = volume->getEditableRepresentation<VolumeRAM>();
         uint8_t* data = reinterpret_cast<uint8_t*>(rep->getData());
 
+        // Predicate that tests the position against the convex hull
+        auto voxelPredicateCH = [&featureInfos, iFeature, &data, &identifierData, &idMapping](const glm::size3_t& pos, const glm::size3_t& dim) {
+            const uint64_t idx = VolumeRAM::posToIndex(pos, dim);
+            double pt[3] = {
+                static_cast<double>(pos.x) / static_cast<double>(dim.x),
+                static_cast<double>(pos.y) / static_cast<double>(dim.y),
+                static_cast<double>(pos.z) / static_cast<double>(dim.z)
+            };
+
+            double dist;
+            boolT isOutside;
+
+            featureInfos[iFeature].convexHullMutex.lock();
+            qh_findbestfacet(featureInfos[iFeature].convexHull.qh(), pt, qh_False, &dist, &isOutside);
+            featureInfos[iFeature].convexHullMutex.unlock();
+
+            if (isOutside) {
+                // Remove all the voxels that are outside of the convex hull
+                return true;
+            }
+            else {
+                const uint32_t id = identifierData[idx];
+                const uint32_t feature = idMapping[id];
+                if (feature != iFeature && feature != uint32_t(-1)) {
+                    // If the voxel is not a feature, we can remove it
+                    return true;
+                }
+            }
+            return false;
+        };
+
+        // Predicate that tests the position against the feature list
+        auto voxelPredicate = [&identifierData, &idMapping, iFeature, &data](const glm::size3_t& pos, const glm::size3_t& dim) {
+            // We are not using the convex hull, so we just filter out the
+            // feature indentifiers
+            const uint64_t idx = VolumeRAM::posToIndex(pos, dim);
+            const uint32_t id = identifierData[idx];
+            const uint32_t feature = idMapping[id];
+
+            if (feature != iFeature) {
+                return true;
+            }
+            else {
+                return false;
+            }
+        };
+
         for (size_t x = 0; x < rep->getDimensions().x; ++x) {
             for (size_t y = 0; y < rep->getDimensions().y; ++y) {
                 for (size_t z = 0; z < rep->getDimensions().z; ++z) {
                     const uint64_t idx = VolumeRAM::posToIndex({ x, y, z }, rep->getDimensions());
 
                     if (featureInfos[iFeature].usingConvexHull) {
-                        double pt[3] = {
-                            static_cast<double>(x) / static_cast<double>(rep->getDimensions().x),
-                            static_cast<double>(y) / static_cast<double>(rep->getDimensions().y),
-                            static_cast<double>(z) / static_cast<double>(rep->getDimensions().z)
-                        };
-
-                        double dist;
-                        boolT isOutside;
-
-                        featureInfos[iFeature].convexHullMutex.lock();
-                        qh_findbestfacet(featureInfos[iFeature].convexHull.qh(), pt, qh_False, &dist, &isOutside);
-                        featureInfos[iFeature].convexHullMutex.unlock();
-
-                        if (isOutside) {
-                            // Remove all the voxels that are outside of the convex hull
+                        if (voxelPredicateCH({ x, y, z }, rep->getDimensions())) {
                             data[idx] = 0;
-                        }
-                        else {
-                            const uint32_t id = identifierData[idx];
-                            const uint32_t feature = idMapping[id];
-                            if (feature != iFeature && feature != uint32_t(-1)) {
-                                // If the voxel is not a feature, we can remove it
-                                data[idx] = 0;
-                            }
                         }
                     }
                     else {
-                        // We are not using the convex hull, so we just filter out the
-                        // feature indentifiers
-                        const uint32_t id = identifierData[idx];
-                        const uint32_t feature = idMapping[id];
-                        if (feature != iFeature) {
+                        if (voxelPredicate({ x, y, z }, rep->getDimensions())) {
                             data[idx] = 0;
                         }
                     }
@@ -249,8 +268,6 @@ void VolumeExportGenerator::process() {
     }
 
     waitOnThreads();
-
-    _outport.setData(featureInfos[0].volume);
 
     glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
 }

@@ -28,8 +28,6 @@ protected:
     VolumeInport _inportIdentifiers;
     ContourInport _inportFeatureMapping;
 
-    VolumeOutport _outport;
-
     FloatProperty _featherFactor;
 
     BoolProperty _shouldOverwriteFiles;
