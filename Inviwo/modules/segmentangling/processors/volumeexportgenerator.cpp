@@ -75,6 +75,7 @@ void VolumeExportGenerator::process() {
     struct InternalFeatureInfo {
         bool isUsed = false;
         Qhull convexHull;
+        std::mutex convexHullMutex;
         std::thread thread;
         Volume* volume = nullptr;
     };
@@ -152,7 +153,7 @@ void VolumeExportGenerator::process() {
 
 
     // Lambda expression to create the volumes from the convex hulls
-    auto createVolumes = [&featureInfos, &dataVolume, this](uint32_t iFeature, Volume* volume) {
+    auto createVolumes = [&featureInfos, &identifierData, &idMapping](uint32_t iFeature, Volume* volume) {
         VolumeRAM* rep = volume->getEditableRepresentation<VolumeRAM>();
         uint8_t* data = reinterpret_cast<uint8_t*>(rep->getData());
 
@@ -169,11 +170,39 @@ void VolumeExportGenerator::process() {
 
                     double dist;
                     boolT isOutside;
-                    qh_findbestfacet(featureInfos[iFeature].convexHull.qh(), pt, qh_False, &dist, &isOutside);
 
-                    // Remove all the voxels that are outside of the convex hull
+                    featureInfos[iFeature].convexHullMutex.lock();
+                    qh_findbestfacet(featureInfos[iFeature].convexHull.qh(), pt, qh_False, &dist, &isOutside);
+                    featureInfos[iFeature].convexHullMutex.unlock();
+
                     if (isOutside) {
+                        // Remove all the voxels that are outside of the convex hull
                         data[idx] = 0;
+                    }
+                    else {
+                        // If we are inside, we want to remove the voxels that are part of
+                        // *another* convex hull, but keep those that have been manually selected
+                        //for (size_t jFeature = 0; jFeature < featureInfos.size(); ++jFeature) {
+                        //    if (jFeature == iFeature || !featureInfos[jFeature].isUsed) {
+                        //        continue;
+                        //    }
+
+                            //double dist;
+                            //boolT isOutside;
+
+                            //featureInfos[jFeature].convexHullMutex.lock();
+                            //qh_findbestfacet(featureInfos[jFeature].convexHull.qh(), pt, qh_False, &dist, &isOutside);
+                            //featureInfos[jFeature].convexHullMutex.unlock();
+
+                            //if (!isOutside) {
+                                const uint32_t id = identifierData[idx];
+                                const uint32_t feature = idMapping[id];
+                                if (feature != iFeature && feature != uint32_t(-1)) {
+                                    // If the voxel is not a feature, we can remove it
+                                    data[idx] = 0;
+                                }
+                            //}
+                        //}
                     }
                 }
             }
@@ -186,9 +215,8 @@ void VolumeExportGenerator::process() {
     // Construct the volumes from the convex hulls
     for (size_t iFeature = 0; iFeature < features.nFeatures; ++iFeature) {
         if (featureInfos[iFeature].isUsed) {
-            Volume* volume = dataVolume.clone();
-            featureInfos[iFeature].thread = std::thread(createVolumes, iFeature, volume);
             featureInfos[iFeature].volume = dataVolume.clone();
+            featureInfos[iFeature].thread = std::thread(createVolumes, iFeature, featureInfos[iFeature].volume);
         }
     }
     
