@@ -80,6 +80,8 @@ void VolumeExportGenerator::process() {
         std::thread thread;
         Volume* volume = nullptr;
         bool usingConvexHull;
+        glm::size3_t boundingBoxMin = glm::size3_t(-1);
+        glm::size3_t boundingBoxMax = glm::size3_t(0);
     };
 
     // Some of the features might not contain any information at all, so we filter those
@@ -274,15 +276,27 @@ void VolumeExportGenerator::process() {
                 for (size_t z = 0; z < rep->getDimensions().z; ++z) {
                     const uint64_t idx = VolumeRAM::posToIndex({ x, y, z }, rep->getDimensions());
 
+                    bool removeValue;
                     if (featureInfos[iFeature].usingConvexHull) {
-                        if (voxelPredicateCHNeighbor({ x, y, z }, rep->getDimensions())) {
-                            data[idx] = 0;
-                        }
+                        removeValue = voxelPredicateCHNeighbor({ x, y, z }, rep->getDimensions());
                     }
                     else {
-                        if (voxelPredicateNeighbor({ x, y, z }, rep->getDimensions())) {
-                            data[idx] = 0;
-                        }
+                        removeValue = voxelPredicateNeighbor({ x, y, z }, rep->getDimensions());
+                    }
+
+                    if (removeValue) {
+                        data[idx] = 0;
+                    }
+                    else {
+                        featureInfos[iFeature].boundingBoxMin = glm::min(
+                            featureInfos[iFeature].boundingBoxMin,
+                            { x, y, z }
+                        );
+
+                        featureInfos[iFeature].boundingBoxMax = glm::max(
+                            featureInfos[iFeature].boundingBoxMax,
+                            { x, y, z }
+                        );
                     }
                 }
             }
@@ -338,22 +352,50 @@ void VolumeExportGenerator::process() {
                 continue;
             }
 
-            Volume* v = _inportFullData.getData()->clone();
-            VolumeRAM& fullRep = *v->getEditableRepresentation<VolumeRAM>();
-            uint8_t* fullData = reinterpret_cast<uint8_t*>(fullRep.getData());
+            const VolumeRAM& fullRep = *_inportFullData.getData()->getRepresentation<VolumeRAM>();
+            const uint8_t* fullData = reinterpret_cast<const uint8_t*>(fullRep.getData());
 
             const VolumeRAM& smallRep = *featureInfos[iFeature].volume->getRepresentation<VolumeRAM>();
             const uint8_t* smallData = reinterpret_cast<const uint8_t*>(smallRep.getData());
 
+            const glm::ivec3 fullBoundingBoxMin = {
+                int(floor((double(featureInfos[iFeature].boundingBoxMin.x) / smallRep.getDimensions().x) * fullRep.getDimensions().x)),
+                int(floor((double(featureInfos[iFeature].boundingBoxMin.y) / smallRep.getDimensions().y) * fullRep.getDimensions().y)),
+                int(floor((double(featureInfos[iFeature].boundingBoxMin.z) / smallRep.getDimensions().z) * fullRep.getDimensions().z))
+            };
+
+            const glm::ivec3 fullBoundingBoxMax = {
+                int(ceil((double(featureInfos[iFeature].boundingBoxMax.x) / smallRep.getDimensions().x) * fullRep.getDimensions().x)),
+                int(ceil((double(featureInfos[iFeature].boundingBoxMax.y) / smallRep.getDimensions().y) * fullRep.getDimensions().y)),
+                int(ceil((double(featureInfos[iFeature].boundingBoxMax.z) / smallRep.getDimensions().z) * fullRep.getDimensions().z))
+            };
+            const glm::ivec3 newSize = fullBoundingBoxMax - fullBoundingBoxMin;
+
+
+
+            Volume* newVolume = new Volume(newSize);
+            VolumeRAM& newRep = *newVolume->getEditableRepresentation<VolumeRAM>();
+            uint8_t* newData = reinterpret_cast<uint8_t*>(newRep.getData());
+
+            std::memset(newData, uint8_t(0), newRep.getNumberOfBytes());
+
+
+
             // For each full voxel, find the covering small voxel
-            for (int x = 0; x < fullRep.getDimensions().x; ++x) {
+            for (int x = 0; x < newSize.x; ++x) {
 #pragma omp parallel for num_threads(10)
-                for (int y = 0; y < fullRep.getDimensions().y; ++y) {
-                    for (int z = 0; z < fullRep.getDimensions().z; ++z) {
+                for (int y = 0; y < newSize.y; ++y) {
+                    for (int z = 0; z < newSize.z; ++z) {
+                        const size3_t fullPos = {
+                            x + fullBoundingBoxMin.x,
+                            y + fullBoundingBoxMin.y,
+                            z + fullBoundingBoxMin.z
+                        };
+
                         const glm::dvec3 p = {
-                            double(x) / fullRep.getDimensions().x,
-                            double(y) / fullRep.getDimensions().y,
-                            double(z) / fullRep.getDimensions().z
+                            double(fullPos.x) / fullRep.getDimensions().x,
+                            double(fullPos.y) / fullRep.getDimensions().y,
+                            double(fullPos.z) / fullRep.getDimensions().z
                         };
 
                         const size3_t smallPos = {
@@ -364,9 +406,11 @@ void VolumeExportGenerator::process() {
 
 
                         const uint64_t smallIdx = VolumeRAM::posToIndex(smallPos, smallRep.getDimensions());
-                        if (smallData[smallIdx] == 0) {
-                            const uint64_t fullIdx = VolumeRAM::posToIndex({ x, y, z }, fullRep.getDimensions());
-                            fullData[fullIdx] = 0;
+                        if (smallData[smallIdx] != 0) {
+                            const uint64_t fullIdx = VolumeRAM::posToIndex(fullPos, fullRep.getDimensions());
+
+                            const uint64_t newIdx = VolumeRAM::posToIndex({x, y, z}, newRep.getDimensions());
+                            newData[newIdx] = fullData[fullIdx];
                         }
                     }
                 }
@@ -378,9 +422,9 @@ void VolumeExportGenerator::process() {
             auto factory = getNetwork()->getApplication()->getDataWriterFactory();
             auto writer = factory->template getWriterForTypeAndExtension<Volume>("dat");
             writer->setOverwrite(_shouldOverwriteFiles);
-            writer->writeData(v, fileName);
+            writer->writeData(newVolume, fileName);
 
-            delete v;
+            delete newVolume;
         }
     }
 
