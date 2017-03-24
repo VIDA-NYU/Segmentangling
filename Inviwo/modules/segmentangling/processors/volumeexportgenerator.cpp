@@ -28,6 +28,7 @@ VolumeExportGenerator::VolumeExportGenerator()
     , _inportData("volumeinportdata")
     , _inportIdentifiers("volumeinportidentifiers")
     , _inportFeatureMapping("inportfeaturemapping")
+    , _inportFullData("inportfulldata")
     , _featherDistance("_featherDistance", "Feathering", 0, 0, 100)
     , _shouldOverwriteFiles("_shouldOverwriteFiles", "Should Overwrite files", true)
     , _basePath("_basePath", "Save Base Path")
@@ -37,6 +38,8 @@ VolumeExportGenerator::VolumeExportGenerator()
     addPort(_inportData);
     addPort(_inportIdentifiers);
     addPort(_inportFeatureMapping);
+    _inportFullData.setOptional(true);
+    addPort(_inportFullData);
 
     addProperty(_featherDistance);
     addProperty(_shouldOverwriteFiles);
@@ -49,7 +52,7 @@ const ProcessorInfo VolumeExportGenerator::getProcessorInfo() const {
     return processorInfo_;
 }
 
-#pragma optimize("", off)
+//#pragma optimize("", off)
 
 void VolumeExportGenerator::process() {
     if (!_saveVolumesFlag || !_inportData.hasData() || !_inportIdentifiers.hasData()) {
@@ -301,8 +304,8 @@ void VolumeExportGenerator::process() {
 
 
     // Lambda expression to save the volumes
-    auto saveVolumes = [&featureInfos, this](size_t iFeature){
-        const std::string fileName = _basePath.get() + "__" + std::to_string(iFeature) + ".dat";
+    auto saveVolumes = [&featureInfos, this](size_t iFeature) {
+        const std::string fileName = _basePath.get() + "__small__" + std::to_string(iFeature) + ".dat";
         LogInfo("Saving volume " << iFeature << ": " << fileName);
 
         auto factory = getNetwork()->getApplication()->getDataWriterFactory();
@@ -326,9 +329,66 @@ void VolumeExportGenerator::process() {
 
     waitOnThreads();
 
+
+    // Save the volumes;  can't do this multithreaded as we would probably run out of memory
+    if (_inportFullData.hasData()) {
+        //const VolumeRAM& fullRep = *_inportFullData.getData()->getRepresentation<VolumeRAM>();
+        for (size_t iFeature = 0; iFeature < features.nFeatures; ++iFeature) {
+            if (!featureInfos[iFeature].isUsed) {
+                continue;
+            }
+
+            Volume* v = _inportFullData.getData()->clone();
+            VolumeRAM& fullRep = *v->getEditableRepresentation<VolumeRAM>();
+            uint8_t* fullData = reinterpret_cast<uint8_t*>(fullRep.getData());
+
+            const VolumeRAM& smallRep = *featureInfos[iFeature].volume->getRepresentation<VolumeRAM>();
+            const uint8_t* smallData = reinterpret_cast<const uint8_t*>(smallRep.getData());
+
+            // For each full voxel, find the covering small voxel
+            for (int x = 0; x < fullRep.getDimensions().x; ++x) {
+#pragma omp parallel for num_threads(10)
+                for (int y = 0; y < fullRep.getDimensions().y; ++y) {
+                    for (int z = 0; z < fullRep.getDimensions().z; ++z) {
+                        const glm::dvec3 p = {
+                            double(x) / fullRep.getDimensions().x,
+                            double(y) / fullRep.getDimensions().y,
+                            double(z) / fullRep.getDimensions().z
+                        };
+
+                        const size3_t smallPos = {
+                            size_t(p.x * smallRep.getDimensions().x),
+                            size_t(p.y * smallRep.getDimensions().y),
+                            size_t(p.z * smallRep.getDimensions().z)
+                        };
+
+
+                        const uint64_t smallIdx = VolumeRAM::posToIndex(smallPos, smallRep.getDimensions());
+                        if (smallData[smallIdx] == 0) {
+                            const uint64_t fullIdx = VolumeRAM::posToIndex({ x, y, z }, fullRep.getDimensions());
+                            fullData[fullIdx] = 0;
+                        }
+                    }
+                }
+            }
+
+            const std::string fileName = _basePath.get() + "__" + std::to_string(iFeature) + ".dat";
+            LogInfo("Saving volume " << iFeature << ": " << fileName);
+
+            auto factory = getNetwork()->getApplication()->getDataWriterFactory();
+            auto writer = factory->template getWriterForTypeAndExtension<Volume>("dat");
+            writer->setOverwrite(_shouldOverwriteFiles);
+            writer->writeData(v, fileName);
+
+            delete v;
+        }
+    }
+
+    // @LEAK:  The volumes are not deleted
+
     glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
 }
 
-#pragma optimize("", on)
+//#pragma optimize("", on)
 
 }  // namespace
