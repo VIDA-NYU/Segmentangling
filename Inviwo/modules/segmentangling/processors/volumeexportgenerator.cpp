@@ -156,14 +156,14 @@ void VolumeExportGenerator::process() {
 
 
     auto neighboringVoxelOffsets = [](int distance) {
-        std::vector<glm::size3_t> offsets;
+        std::vector<glm::ivec3> offsets;
         offsets.reserve(pow(2 * distance + 1, 3));
 
         offsets.push_back({ 0, 0, 0 });
 
-        for (size_t x = -distance; x <= distance; ++x) {
-            for (size_t y = -distance; y <= distance; ++y) {
-                for (size_t z = -distance; z <= distance; ++z) {
+        for (int x = -distance; x <= distance; ++x) {
+            for (int y = -distance; y <= distance; ++y) {
+                for (int z = -distance; z <= distance; ++z) {
                     if (x == 0 && y == 0 && z == 0) {
                         // We put (0,0,0) at the top to speed up things later
                         continue;
@@ -177,11 +177,11 @@ void VolumeExportGenerator::process() {
         return offsets;
     };
 
-    const std::vector<glm::size3_t> offsets = neighboringVoxelOffsets(_featherDistance);
+    const std::vector<glm::ivec3> offsets = neighboringVoxelOffsets(_featherDistance);
 
 
     // Lambda expression to create the volumes from the convex hulls
-    auto createVolumes = [&featureInfos, &identifierData, &idMapping](uint32_t iFeature, Volume* volume) {
+    auto createVolumes = [&featureInfos, &identifierData, &idMapping, &offsets](uint32_t iFeature, Volume* volume) {
         VolumeRAM* rep = volume->getEditableRepresentation<VolumeRAM>();
         uint8_t* data = reinterpret_cast<uint8_t*>(rep->getData());
 
@@ -225,6 +225,15 @@ void VolumeExportGenerator::process() {
             return false;
         };
 
+        auto voxelPredicateCHNeighbor = [&voxelPredicateCH, &offsets](const glm::size3_t& pos, const glm::size3_t& dim) {
+            for (const glm::size3_t& offset : offsets) {
+                if (!voxelPredicateCH(pos + offset, dim)) {
+                    return false;
+                }
+            }
+            return true;
+        };
+
         // Predicate that tests the position against the feature list
         auto voxelPredicate = [&identifierData, &idMapping, iFeature, &data](const glm::size3_t& pos, const glm::size3_t& dim) {
             // We are not using the convex hull, so we just filter out the
@@ -232,7 +241,7 @@ void VolumeExportGenerator::process() {
             const glm::size3_t p = glm::clamp(
                 pos,
                 glm::size3_t(0),
-                dim
+                dim - glm::size3_t(1)
             );
 
             const uint64_t idx = VolumeRAM::posToIndex(p, dim);
@@ -247,18 +256,28 @@ void VolumeExportGenerator::process() {
             }
         };
 
+        auto voxelPredicateNeighbor = [&voxelPredicate, &offsets](const glm::size3_t& pos, const glm::size3_t& dim) {
+            for (const glm::size3_t& offset : offsets) {
+                if (!voxelPredicate(pos + offset, dim)) {
+                    return false;
+                }
+            }
+            return true;
+        };
+
+
         for (size_t x = 0; x < rep->getDimensions().x; ++x) {
             for (size_t y = 0; y < rep->getDimensions().y; ++y) {
                 for (size_t z = 0; z < rep->getDimensions().z; ++z) {
                     const uint64_t idx = VolumeRAM::posToIndex({ x, y, z }, rep->getDimensions());
 
                     if (featureInfos[iFeature].usingConvexHull) {
-                        if (voxelPredicateCH({ x, y, z }, rep->getDimensions())) {
+                        if (voxelPredicateCHNeighbor({ x, y, z }, rep->getDimensions())) {
                             data[idx] = 0;
                         }
                     }
                     else {
-                        if (voxelPredicate({ x, y, z }, rep->getDimensions())) {
+                        if (voxelPredicateNeighbor({ x, y, z }, rep->getDimensions())) {
                             data[idx] = 0;
                         }
                     }
