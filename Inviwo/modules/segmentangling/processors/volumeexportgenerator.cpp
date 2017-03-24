@@ -28,7 +28,7 @@ VolumeExportGenerator::VolumeExportGenerator()
     , _inportData("volumeinportdata")
     , _inportIdentifiers("volumeinportidentifiers")
     , _inportFeatureMapping("inportfeaturemapping")
-    , _featherFactor("_featherFactor", "Feathering", 0.f, 0.f, 0.01f)
+    , _featherDistance("_featherDistance", "Feathering", 0, 0, 100)
     , _shouldOverwriteFiles("_shouldOverwriteFiles", "Should Overwrite files", true)
     , _basePath("_basePath", "Save Base Path")
     , _saveVolumes("_saveVolumes", "Save Volumes")
@@ -38,7 +38,7 @@ VolumeExportGenerator::VolumeExportGenerator()
     addPort(_inportIdentifiers);
     addPort(_inportFeatureMapping);
 
-    //addProperty(_featherFactor);
+    addProperty(_featherDistance);
     addProperty(_shouldOverwriteFiles);
     addProperty(_basePath);
     _saveVolumes.onChange([this]() { _saveVolumesFlag = true; });
@@ -155,6 +155,29 @@ void VolumeExportGenerator::process() {
     waitOnThreads();
 
 
+    auto neighboringVoxelOffsets = [](int distance) {
+        std::vector<glm::size3_t> offsets;
+        offsets.reserve(pow(2 * distance + 1, 3));
+
+        offsets.push_back({ 0, 0, 0 });
+
+        for (size_t x = -distance; x <= distance; ++x) {
+            for (size_t y = -distance; y <= distance; ++y) {
+                for (size_t z = -distance; z <= distance; ++z) {
+                    if (x == 0 && y == 0 && z == 0) {
+                        // We put (0,0,0) at the top to speed up things later
+                        continue;
+                    }
+
+                    offsets.push_back({ x, y, z });
+                }
+            }
+        }
+
+        return offsets;
+    };
+
+    const std::vector<glm::size3_t> offsets = neighboringVoxelOffsets(_featherDistance);
 
 
     // Lambda expression to create the volumes from the convex hulls
@@ -162,13 +185,22 @@ void VolumeExportGenerator::process() {
         VolumeRAM* rep = volume->getEditableRepresentation<VolumeRAM>();
         uint8_t* data = reinterpret_cast<uint8_t*>(rep->getData());
 
+
+
         // Predicate that tests the position against the convex hull
         auto voxelPredicateCH = [&featureInfos, iFeature, &data, &identifierData, &idMapping](const glm::size3_t& pos, const glm::size3_t& dim) {
-            const uint64_t idx = VolumeRAM::posToIndex(pos, dim);
+            const glm::size3_t p = glm::clamp(
+                pos,
+                glm::size3_t(0),
+                dim
+            );
+
+
+            const uint64_t idx = VolumeRAM::posToIndex(p, dim);
             double pt[3] = {
-                static_cast<double>(pos.x) / static_cast<double>(dim.x),
-                static_cast<double>(pos.y) / static_cast<double>(dim.y),
-                static_cast<double>(pos.z) / static_cast<double>(dim.z)
+                static_cast<double>(p.x) / static_cast<double>(dim.x),
+                static_cast<double>(p.y) / static_cast<double>(dim.y),
+                static_cast<double>(p.z) / static_cast<double>(dim.z)
             };
 
             double dist;
@@ -197,15 +229,21 @@ void VolumeExportGenerator::process() {
         auto voxelPredicate = [&identifierData, &idMapping, iFeature, &data](const glm::size3_t& pos, const glm::size3_t& dim) {
             // We are not using the convex hull, so we just filter out the
             // feature indentifiers
-            const uint64_t idx = VolumeRAM::posToIndex(pos, dim);
+            const glm::size3_t p = glm::clamp(
+                pos,
+                glm::size3_t(0),
+                dim
+            );
+
+            const uint64_t idx = VolumeRAM::posToIndex(p, dim);
             const uint32_t id = identifierData[idx];
             const uint32_t feature = idMapping[id];
 
-            if (feature != iFeature) {
-                return true;
+            if (feature == iFeature) {
+                return false;
             }
             else {
-                return false;
+                return true;
             }
         };
 
