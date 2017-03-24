@@ -10,6 +10,7 @@ namespace inviwo {
 struct ContourInformation {
     uint32_t nFeatures;
     GLuint ssbo;
+    std::vector<bool> useConvexHull;
 };
 
 using ContourInport = DataInport<ContourInformation>;

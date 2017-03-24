@@ -27,6 +27,7 @@ protected:
     void selectVolume(Event* e, int volume);
     void addVolumeModification(Event* e);
     void removeVolumeModification(Event* e);
+    void toggleConvexHull(Event* e);
 
     VolumeInport _inport;
     FeatureInport _inportFeatureMapping;
@@ -62,6 +63,8 @@ protected:
     EventProperty _addVolumeEvent;
     EventProperty _removeVolumeEvent;
 
+    EventProperty _toggleConvexHull;
+
     EventProperty _trigger;
 
     ButtonProperty _clearAllVolumes;
@@ -74,7 +77,7 @@ protected:
     FloatVec3Property& _lastChangedSlicePosition;
 
     StringProperty _featureNumberFound;
-
+    StringProperty _usingConvexHull;
 
     std::vector<uint32_t> _mappingData;
     

@@ -78,6 +78,7 @@ void VolumeExportGenerator::process() {
         std::mutex convexHullMutex;
         std::thread thread;
         Volume* volume = nullptr;
+        bool usingConvexHull;
     };
 
     // Some of the features might not contain any information at all, so we filter those
@@ -89,6 +90,12 @@ void VolumeExportGenerator::process() {
         if (feature != uint32_t(-1)) {
             featureInfos[feature].isUsed = true;
         }
+    }
+
+    // Populating the data in the feature infos struct
+    for (size_t i = 0; i < features.nFeatures; ++i) {
+        LogInfo("Using convex hull: " << i << "  " << features.useConvexHull[i] ? "true" : "false");
+        featureInfos[i].usingConvexHull = features.useConvexHull[i];
     }
 
 
@@ -162,47 +169,41 @@ void VolumeExportGenerator::process() {
                 for (size_t z = 0; z < rep->getDimensions().z; ++z) {
                     const uint64_t idx = VolumeRAM::posToIndex({ x, y, z }, rep->getDimensions());
 
-                    double pt[3] = {
-                        static_cast<double>(x) / static_cast<double>(rep->getDimensions().x),
-                        static_cast<double>(y) / static_cast<double>(rep->getDimensions().y),
-                        static_cast<double>(z) / static_cast<double>(rep->getDimensions().z)
-                    };
+                    if (featureInfos[iFeature].usingConvexHull) {
+                        double pt[3] = {
+                            static_cast<double>(x) / static_cast<double>(rep->getDimensions().x),
+                            static_cast<double>(y) / static_cast<double>(rep->getDimensions().y),
+                            static_cast<double>(z) / static_cast<double>(rep->getDimensions().z)
+                        };
 
-                    double dist;
-                    boolT isOutside;
+                        double dist;
+                        boolT isOutside;
 
-                    featureInfos[iFeature].convexHullMutex.lock();
-                    qh_findbestfacet(featureInfos[iFeature].convexHull.qh(), pt, qh_False, &dist, &isOutside);
-                    featureInfos[iFeature].convexHullMutex.unlock();
+                        featureInfos[iFeature].convexHullMutex.lock();
+                        qh_findbestfacet(featureInfos[iFeature].convexHull.qh(), pt, qh_False, &dist, &isOutside);
+                        featureInfos[iFeature].convexHullMutex.unlock();
 
-                    if (isOutside) {
-                        // Remove all the voxels that are outside of the convex hull
-                        data[idx] = 0;
+                        if (isOutside) {
+                            // Remove all the voxels that are outside of the convex hull
+                            data[idx] = 0;
+                        }
+                        else {
+                            const uint32_t id = identifierData[idx];
+                            const uint32_t feature = idMapping[id];
+                            if (feature != iFeature && feature != uint32_t(-1)) {
+                                // If the voxel is not a feature, we can remove it
+                                data[idx] = 0;
+                            }
+                        }
                     }
                     else {
-                        // If we are inside, we want to remove the voxels that are part of
-                        // *another* convex hull, but keep those that have been manually selected
-                        //for (size_t jFeature = 0; jFeature < featureInfos.size(); ++jFeature) {
-                        //    if (jFeature == iFeature || !featureInfos[jFeature].isUsed) {
-                        //        continue;
-                        //    }
-
-                            //double dist;
-                            //boolT isOutside;
-
-                            //featureInfos[jFeature].convexHullMutex.lock();
-                            //qh_findbestfacet(featureInfos[jFeature].convexHull.qh(), pt, qh_False, &dist, &isOutside);
-                            //featureInfos[jFeature].convexHullMutex.unlock();
-
-                            //if (!isOutside) {
-                                const uint32_t id = identifierData[idx];
-                                const uint32_t feature = idMapping[id];
-                                if (feature != iFeature && feature != uint32_t(-1)) {
-                                    // If the voxel is not a feature, we can remove it
-                                    data[idx] = 0;
-                                }
-                            //}
-                        //}
+                        // We are not using the convex hull, so we just filter out the
+                        // feature indentifiers
+                        const uint32_t id = identifierData[idx];
+                        const uint32_t feature = idMapping[id];
+                        if (feature != iFeature) {
+                            data[idx] = 0;
+                        }
                     }
                 }
             }

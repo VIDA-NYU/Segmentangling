@@ -91,12 +91,14 @@ VolumeCollectionGenerator::VolumeCollectionGenerator()
     , _selectVolume10Event("_selectVolume10Event", "Select Volume 10", [this](Event* e) { selectVolume(e, 9); }, IvwKey::Num0, KeyState::Press)
     , _addVolumeEvent("_addVolumeEvent", "Add Volume", [this](Event* e) { addVolumeModification(e); }, IvwKey::F1, KeyState::Press)
     , _removeVolumeEvent("_removeVolumeEvent", "Remove Volume", [this](Event* e) { removeVolumeModification(e); }, IvwKey::F2, KeyState::Press)
+    , _toggleConvexHull("_toggleConvexHull", "Toggle Convex Hull", [this](Event* e) { toggleConvexHull(e); }, IvwKey::F3, KeyState::Press)
     , _trigger("_trigger", "Trigger", [this](Event* e) { _modify.pressButton(); e->markAsUsed(); }, IvwKey::Space, KeyState::Press)
     , _clearAllVolumes("_clearAllVolumes", "Clear all volumes")
     , _slice1Position("_slice1Position", "Slice 1 Position")
     , _slice2Position("_slice2Position", "Slice 2 Position")
     , _slice3Position("_slice3Position", "Slice 3 Position")
     , _featureNumberFound("_featureNumberFound", "Feature Number Found")
+    , _usingConvexHull("_usingConvexHull", "Using Convex Hull")
     , _lastChangedSlicePosition(_slice1Position)
     //, _lastChangedValue("_lastChangedValue", "_lastChangedValue")
     , _lastChangedValue(LastChangedSlider)
@@ -123,6 +125,7 @@ VolumeCollectionGenerator::VolumeCollectionGenerator()
 
     addProperty(_addVolumeEvent);
     addProperty(_removeVolumeEvent);
+    addProperty(_toggleConvexHull);
 
     addProperty(_trigger);
 
@@ -173,6 +176,7 @@ VolumeCollectionGenerator::VolumeCollectionGenerator()
         }
     };
 
+    addProperty(_usingConvexHull);
     
     _featureToModify.onChange([this, updateFeature](){
         _lastChangedValue = LastChangedVolume;
@@ -217,6 +221,7 @@ void VolumeCollectionGenerator::process() {
         }
         _dirty.clearAllVolumes = false;
     }
+
 
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, _information->ssbo);
     if (_mappingData.empty() || _inport.isChanged()) {
@@ -275,13 +280,29 @@ void VolumeCollectionGenerator::process() {
     );
 
     _information->nFeatures = _nVolumes + 1;
+    _information->useConvexHull.resize(_information->nFeatures, true);
 
     _outportContour.setData(_information);
+
+    if (_information->useConvexHull[_currentVolume]) {
+        _usingConvexHull = "";
+    }
+    else {
+        _usingConvexHull = "Ignoring Convex Hull";
+    }
 }
 //#pragma optimize("", on)
 
 void VolumeCollectionGenerator::selectVolume(Event* e, int volume) {
     _currentVolume = volume;
+
+    if (_information->useConvexHull[_currentVolume]) {
+        _usingConvexHull = "";
+    }
+    else {
+        _usingConvexHull = "Ignoring Convex Hull";
+    }
+
     e->markAsUsed();
 }
 
@@ -292,6 +313,19 @@ void VolumeCollectionGenerator::addVolumeModification(Event* e) {
 
 void VolumeCollectionGenerator::removeVolumeModification(Event* e) {
     _modification.setSelectedValue(ModificationRemove);
+    e->markAsUsed();
+}
+
+void VolumeCollectionGenerator::toggleConvexHull(Event* e) {
+    _information->useConvexHull[_currentVolume] = !_information->useConvexHull[_currentVolume];
+
+    if (_information->useConvexHull[_currentVolume]) {
+        _usingConvexHull = "";
+    }
+    else {
+        _usingConvexHull = "Ignoring Convex Hull";
+    }
+
     e->markAsUsed();
 }
 
