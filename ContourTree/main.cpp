@@ -268,6 +268,47 @@ void preProcessing() {
     qDebug() << "done";
 }
 
+void toyProcessing() {
+    // the actual raw file without the extension. the extensions will be added as and when needed.
+    QString data = "../data/toy";
+
+    std::chrono::time_point<std::chrono::system_clock> start, end;
+    start = std::chrono::system_clock::now();
+    Grid3D grid(128,128,128);
+    end = std::chrono::system_clock::now();
+
+    start = std::chrono::system_clock::now();
+    grid.loadGrid(data + ".raw");
+    MergeTree ct;
+    contourtree::TreeType tree = TypeJoinTree;
+    ct.computeTree(&grid,tree);
+    end = std::chrono::system_clock::now();
+    qDebug() << "Time to compute contour tree: " << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() << "ms\n";
+    ct.output(data, tree);
+
+
+    // now simplify and store simplification hierarchy
+    start = std::chrono::system_clock::now();
+    ContourTreeData ctdata;
+    ctdata.loadBinFile(data);
+
+    SimplifyCT sim;
+    sim.setInput(&ctdata);
+    bool persistence = false;
+    SimFunction *simFn;
+    if(persistence) {
+        simFn = new Persistence(ctdata);
+    } else {
+        simFn = new HyperVolume(ctdata,data + ".part.raw");
+    }
+    sim.simplify(simFn);
+    end = std::chrono::system_clock::now();
+    qDebug() << "Time to simplify: " << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() << "ms\n";
+
+    sim.outputOrder(data);
+    qDebug() << "done";
+}
+
 void testApi() {
     // the actual raw file without the extension. the extensions will be added as and when needed.
     QString data = "../data/Mass-Scan-Slice-Data-1-256-256-256-cropped";
@@ -306,10 +347,11 @@ void testApi() {
 
 }
 
-void insert(QVector<int> &cx, QVector<int> &cy, QVector<int> &cz, int x,int y, int z) {
+void insert(QVector<int> &cx, QVector<int> &cy, QVector<int> &cz, QVector<int> &rad, int x,int y,int z, int r) {
     cx << x;
     cy << y;
     cz << z;
+    rad << r;
 }
 
 void generateData(bool mini = false) {
@@ -323,25 +365,26 @@ void generateData(bool mini = false) {
     } else {
         volume.resize(dimx * dimy * dimz, 0);
     }
-    QVector<int> centerx, centery, centerz;
+    QVector<int> centerx, centery, centerz, rad;
 
-    insert(centerx,centery,centerz,30 ,30 , 30);
-    insert(centerx,centery,centerz,100,100, 30);
-    insert(centerx,centery,centerz,100,30 , 30);
-    insert(centerx,centery,centerz,30 ,100, 30);
-    insert(centerx,centery,centerz,30 ,30 , 100);
-    insert(centerx,centery,centerz,100,100, 100);
-    insert(centerx,centery,centerz,100,30 , 100);
-    insert(centerx,centery,centerz,30 ,100, 100);
+//    insert(centerx,centery,centerz,30 ,30 , 30);
+//    insert(centerx,centery,centerz,100,100, 30);
+//    insert(centerx,centery,centerz,100,30 , 30);
+//    insert(centerx,centery,centerz,30 ,100, 30);
+//    insert(centerx,centery,centerz,30 ,30 , 100);
+//    insert(centerx,centery,centerz,100,100, 100);
+//    insert(centerx,centery,centerz,100,30 , 100);
+//    insert(centerx,centery,centerz,30 ,100, 100);
+    insert(centerx,centery,centerz,rad,128-40,128-40,30,20);
+    insert(centerx,centery,centerz,rad,128-55,128-30,55,24);
+    insert(centerx,centery,centerz,rad,128-90,128-80,128-60,30);
 
     // generate volume
-
-    int radius = 20;
     for(int i = 0;i < centerx.size();i ++) {
         int x = centerx[i];
         int y = centery[i];
         int z = centerz[i];
-
+        int radius = rad[i];
         for(int xx = x - radius;xx < x + radius;xx ++) {
             for(int yy = y - radius;yy < y + radius;yy ++) {
                 for(int zz = z - radius;zz < z + radius;zz ++) {
@@ -353,7 +396,7 @@ void generateData(bool mini = false) {
                     if(mini) {
                         val = 255 - val;
                     }
-                    volume[in] = uint8_t(val);
+                    volume[in] = std::max(uint8_t(val),volume[in]);
                 }
             }
         }
@@ -497,6 +540,48 @@ void testConnectivity() {
 
     qDebug() << "all arcs have a single component:" << single;
 }
+void toyFeatures() {
+    // the actual raw file without the extension. the extensions will be added as and when needed.
+    QString data = "../data/toy";
+    TopologicalFeatures tf;
+    std::chrono::time_point<std::chrono::system_clock> start, end;
+    start = std::chrono::system_clock::now();
+    tf.loadData(data);
+    std::vector<Feature> features = tf.getFeatures(2,0);
+//    std::vector<Feature> features = tf.getFeaturesPart(10,0);
+    end = std::chrono::system_clock::now();
+    qDebug() << "Time to get features: " << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() << "ms";
+    qDebug() << "no. of features:" << features.size() << "\n";
+
+    // read part file
+    int dimx = 128;
+    int dimy = 128;
+    int dimz = 128;
+
+    qDebug() << "reading part";
+    QVector<uint32_t> part(dimx * dimy * dimz);
+    std::ifstream ip((data + ".part.raw").toStdString(), std::ios::binary);
+    ip.read((char *)(part.data()), part.size() * sizeof(uint32_t));
+    ip.close();
+
+    qDebug() << "mapping features to arcs";
+    std::vector<uint32_t> arcMap(tf.ctdata.noArcs, 0);
+    for(int i = 0;i < features.size();i ++) {
+        for(int ano: features[i].arcs) {
+            arcMap[ano] = (i + 1);
+        }
+    }
+
+    qDebug() << "mapping voxels to features";
+    for(int i = 0;i < part.size();i ++) {
+        part[i] = arcMap[part[i]];
+    }
+
+    qDebug() << "writing features";
+    std::ofstream op((data + ".test-features.raw").toStdString(), std::ios::binary);
+    op.write((char *)(part.data()), part.size() * sizeof(uint32_t));
+    ip.close();
+}
 
 int main(int argc, char *argv[])
 {
@@ -507,10 +592,12 @@ int main(int argc, char *argv[])
 //    testMergeTree();
 //    preProcessing();
 //    testApi();
-
-//    generateData(true);
 //    testFeatures();
-    testConnectivity();
+//    testConnectivity();
+    generateData();
+    toyProcessing();
+    toyFeatures();
+
     exit(0);
     return a.exec();
 }
