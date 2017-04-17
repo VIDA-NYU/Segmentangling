@@ -17,7 +17,8 @@ SOURCES += main.cpp \
     TriMesh.cpp \
     TopologicalFeatures.cpp \
     HyperVolume.cpp \
-    ContourTree.cpp
+    ContourTree.cpp \
+    Grid3DShort.cpp
 
 HEADERS += \
     DisjointSets.hpp \
@@ -32,7 +33,8 @@ HEADERS += \
     TriMesh.hpp \
     TopologicalFeatures.hpp \
     HyperVolume.hpp \
-    ContourTree.hpp
+    ContourTree.hpp \
+    Grid3DShort.hpp
 
 # Unix configuration
 unix:!macx{
