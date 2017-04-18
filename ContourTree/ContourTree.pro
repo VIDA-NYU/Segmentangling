@@ -32,7 +32,8 @@ HEADERS += \
     TriMesh.hpp \
     TopologicalFeatures.hpp \
     HyperVolume.hpp \
-    ContourTree.hpp
+    ContourTree.hpp \
+    test.hpp
 
 # Unix configuration
 unix:!macx{
