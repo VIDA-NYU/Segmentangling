@@ -104,6 +104,7 @@ int main(int argc, char *argv[])
     int dimx = 175;
     int dimy = 600;
     int dimz = 250;
+    int noFeatures = 20;
 
     if(!rawFile.endsWith(".raw")) {
         qDebug() << "input should be a .raw file";
@@ -113,7 +114,7 @@ int main(int argc, char *argv[])
     QString data = rawFile.left(rawFile.length() - 4);
 
     preProcessingShort(data,dimx,dimy,dimz);
-    outputParaviewFile(data,dimx,dimy,dimz,20);
+    outputParaviewFile(data,dimx,dimy,dimz,noFeatures);
 
     exit(0);
     return a.exec();

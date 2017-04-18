@@ -41,7 +41,7 @@ unix:!macx{
     INCLUDEPATH += -I /usr/local/include/
     QMAKE_CXXFLAGS += -fopenmp
     QMAKE_LFLAGS   += -fopenmp
-    LIBS += -lboost_thread -lboost_filesystem -lboost_program_options -lboost_system -lboost_iostreams
+#    LIBS += -lboost_thread -lboost_filesystem -lboost_program_options -lboost_system -lboost_iostreams
 }
 
 win32{
