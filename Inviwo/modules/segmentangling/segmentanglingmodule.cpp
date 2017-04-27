@@ -2,6 +2,7 @@
 
 #include <modules/opengl/shader/shadermanager.h>
 #include <modules/segmentangling/processors/contourfilter.h>
+#include <modules/segmentangling/processors/datapreprocessor.h>
 #include <modules/segmentangling/processors/loadcontourtree.h>
 #include <modules/segmentangling/processors/segmentationidraycaster.h>
 #include <modules/segmentangling/processors/volumecollectiongenerator.h>
@@ -19,6 +20,7 @@ SegmentanglingModule::SegmentanglingModule(InviwoApplication* app)
     registerPort<DataInport<GLuint>>("bufferInport");
 
     registerProcessor<ContourFilter>();
+    registerProcessor<DataPreprocessor>();
     registerProcessor<LoadContourTree>();
     registerProcessor<SegmentationIdRaycaster>();
     registerProcessor<VolumeCollectionGenerator>();

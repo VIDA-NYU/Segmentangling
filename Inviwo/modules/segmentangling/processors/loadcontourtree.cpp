@@ -73,10 +73,15 @@ const ProcessorInfo LoadContourTree::getProcessorInfo() const {
 void LoadContourTree::process() {
     if (_fileIsDirty) {
         std::string file = _contourTreeFile;
-        _topologicalFeatures = contourtree::TopologicalFeatures();
-        _topologicalFeatures.loadData(QString::fromStdString(file), true);
-        _dataIsDirty = true;
-        _fileIsDirty = false;
+        try {
+            _topologicalFeatures = contourtree::TopologicalFeatures();
+            _topologicalFeatures.loadData(QString::fromStdString(file), true);
+            _dataIsDirty = true;
+            _fileIsDirty = false;
+        }
+        catch (std::exception& ) {
+
+        }
     }
 
 

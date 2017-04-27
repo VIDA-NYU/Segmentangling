@@ -9,6 +9,7 @@ ivw_include_directories(${CMAKE_CURRENT_SOURCE_DIR}/ext/qhull/src)
 set(HEADER_FILES 
     ${CMAKE_CURRENT_SOURCE_DIR}/common.h
     ${CMAKE_CURRENT_SOURCE_DIR}/processors/contourfilter.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/processors/datapreprocessor.h
     ${CMAKE_CURRENT_SOURCE_DIR}/processors/loadcontourtree.h
     ${CMAKE_CURRENT_SOURCE_DIR}/processors/segmentationidraycaster.h
     ${CMAKE_CURRENT_SOURCE_DIR}/processors/volumecollectiongenerator.h
@@ -34,20 +35,22 @@ ivw_group("Header Files" ${HEADER_FILES})
 # Add source files
 set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/processors/contourfilter.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/processors/datapreprocessor.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/processors/loadcontourtree.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/processors/segmentationidraycaster.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/processors/volumecollectiongenerator.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/processors/volumeexportgenerator.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/processors/volumesliceoverlay.cpp
 
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../../ContourTree/ContourTree.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../ContourTree/ContourTreeData.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../ContourTree/Grid3D.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../../ContourTree/Hypervolume.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../ContourTree/MergeTree.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../ContourTree/Persistence.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../ContourTree/SimplifyCT.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../ContourTree/TopologicalFeatures.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../ContourTree/TriMesh.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../../ContourTree/ContourTree.cpp
 )
 ivw_group("Source Files" ${SOURCE_FILES})
 
