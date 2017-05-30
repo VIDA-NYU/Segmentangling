@@ -47,20 +47,22 @@ DataPreprocessor::DataPreprocessor()
     , _subsampledVolumeFile("_subsampledVolumeFile", "Subsampled Volume File")
     , _fullVolumeFile("_fullVolumeFile", "Full Volume File")
     , _contourTreeFile("contourTreeFile", "Contour Tree File")
+    , _loadButton("_loadButton", "Load")
 {
-    _baseVolume.onChange([&]() { _volumeIsDirty = true; });
     addProperty(_baseVolume);
+    addProperty(_subsampledVolumeFile);
 
     _partVolumeFile.setReadOnly(true);
     addProperty(_partVolumeFile);
-    _subsampledVolumeFile.setReadOnly(true);
-    addProperty(_subsampledVolumeFile);
     _fullVolumeFile.setReadOnly(true);
     addProperty(_fullVolumeFile);
 
     //_contourTreeFile.onChange([&]() { _fileIsDirty = true; });
     _contourTreeFile.setReadOnly(true);
     addProperty(_contourTreeFile);
+
+    _loadButton.onChange([&]() { _volumeIsDirty = true; });
+    addProperty(_loadButton);
 }
 
 const ProcessorInfo DataPreprocessor::getProcessorInfo() const {
@@ -69,106 +71,120 @@ const ProcessorInfo DataPreprocessor::getProcessorInfo() const {
 
 #pragma optimize ("", off)
 void DataPreprocessor::process() {
-    if (!_volumeIsDirty || _baseVolume.get().empty() || !filesystem::fileExists(_baseVolume.get())) {
+    const bool isDirty = _volumeIsDirty;
+    const bool hasBaseFile = !_baseVolume.get().empty() && filesystem::fileExists(_baseVolume.get());
+    const bool hasScaledFile = !_subsampledVolumeFile.get().empty() && filesystem::fileExists(_subsampledVolumeFile.get());
+
+    if (!isDirty || !hasBaseFile || !hasScaledFile) {
         return;
     }
 
-    const std::string baseVolumeFile = _baseVolume.get();
+    //const std::string baseVolumeFile = _baseVolume.get();
         
     // Step 1
     // Derive the dependent names
-    const std::string SubSampledPart = "_subsample.dat";
-    const std::string subSampleVolumeFile =
-        filesystem::getFileDirectory(baseVolumeFile) + '/' +
-        filesystem::getFileNameWithoutExtension(baseVolumeFile) + SubSampledPart;
+    //const std::string SubSampledPart = "_subsample.dat";
+    //const std::string subSampleVolumeFile =
+    //    filesystem::getFileDirectory(baseVolumeFile) + '/' +
+    //    filesystem::getFileNameWithoutExtension(baseVolumeFile) + SubSampledPart;
 
-    if (!filesystem::fileExists(subSampleVolumeFile)) {
-        // The subsampled volume does not exist, so we assume none of the other files
-        // to exist either
+    //if (!filesystem::fileExists(subSampleVolumeFile)) {
+    //    // The subsampled volume does not exist, so we assume none of the other files
+    //    // to exist either
 
-        // Step 2
-        // Load the volume
-        auto rf = InviwoApplication::getPtr()->getDataReaderFactory();
-        const std::string ext = filesystem::getFileExtension(baseVolumeFile);
-        auto volreader = rf->getReaderForTypeAndExtension<VolumeSequence>(ext);
-        auto volumes = volreader->readData(baseVolumeFile);
-        auto volume = (*volumes)[0];
-        
+    //    // Step 2
+    //    // Load the volume
 
-        // Step 3
-        // Resample the volume
-        // Find the minimum dimension
-        const glm::size_t min = glm::compMin(volume->getDimensions());
-        glm::size3_t scaleFactor = glm::size3_t(1);
+    auto rf = InviwoApplication::getPtr()->getDataReaderFactory();
+    const std::string ext = filesystem::getFileExtension(_baseVolume);
+    auto volreader = rf->getReaderForTypeAndExtension<VolumeSequence>(ext);
+    auto fullVolume = (*(volreader->readData(_baseVolume)))[0];
+    auto scaledVolume = (*(volreader->readData(_subsampledVolumeFile)))[0];
 
-        if (min > 256) {
-            const glm::size_t factor = min / 256;
-            scaleFactor = glm::size3_t(factor);
-        }
 
-        auto vol = volume->getRepresentation<VolumeRAM>();
-        auto sample = std::make_shared<Volume>(util::volumeSubSample(vol, scaleFactor));
-        sample->copyMetaDataFrom(*volume);
-        sample->dataMap_ = volume->dataMap_;
-        sample->setModelMatrix(volume->getModelMatrix());
-        sample->setWorldMatrix(volume->getWorldMatrix());
 
-        // Step 4
-        // Write the subsampled volume to disk
-        auto factory = getNetwork()->getApplication()->getDataWriterFactory();
-        auto writer = factory->template getWriterForTypeAndExtension<Volume>("dat");
-        writer->writeData(sample.get(), subSampleVolumeFile);
+
+
+
+    //    
+
+    //    // Step 3
+    //    // Resample the volume
+    //    // Find the minimum dimension
+    //    const glm::size_t min = glm::compMin(volume->getDimensions());
+    //    glm::size3_t scaleFactor = glm::size3_t(1);
+
+    //    if (min > 256) {
+    //        const glm::size_t factor = min / 256;
+    //        scaleFactor = glm::size3_t(factor);
+    //    }
+
+    //    auto vol = volume->getRepresentation<VolumeRAM>();
+    //    auto sample = std::make_shared<Volume>(util::volumeSubSample(vol, scaleFactor));
+    //    sample->copyMetaDataFrom(*volume);
+    //    sample->dataMap_ = volume->dataMap_;
+    //    sample->setModelMatrix(volume->getModelMatrix());
+    //    sample->setWorldMatrix(volume->getWorldMatrix());
+
+    //    // Step 4
+    //    // Write the subsampled volume to disk
+    //    auto factory = getNetwork()->getApplication()->getDataWriterFactory();
+    //    auto writer = factory->template getWriterForTypeAndExtension<Volume>("dat");
+    //    writer->writeData(sample.get(), subSampleVolumeFile);
 
         // Step 5
         // Perform the contour tree computations
-        const std::string baseFile =
-            filesystem::getFileDirectory(baseVolumeFile) + '/' +
-            filesystem::getFileNameWithoutExtension(subSampleVolumeFile);
-
-        const glm::size3_t subSampledSize = sample->getDimensions();
-        contourtree::Grid3D grid(subSampledSize.x, subSampledSize.y, subSampledSize.z);
-        grid.loadGrid(QString::fromStdString(subSampleVolumeFile));
-        contourtree::MergeTree ct;
-        contourtree::TreeType tree = contourtree::TypeJoinTree;
-        ct.computeTree(&grid, tree);
-        ct.output(QString::fromStdString(baseFile), tree);
-
-        contourtree::ContourTreeData ctdata;
-        ctdata.loadBinFile(QString::fromStdString(baseFile));
-
-        contourtree::SimplifyCT sim;
-        sim.setInput(&ctdata);
-        bool persistence = false;
-        contourtree::SimFunction* simFn;
-        if (persistence) {
-            simFn = new contourtree::Persistence(ctdata);
-        }
-        else {
-            simFn = new contourtree::HyperVolume(ctdata, QString::fromStdString(baseFile + ".part.raw"));
-        }
-        sim.simplify(simFn);
-        sim.outputOrder(QString::fromStdString(baseFile));
-
-        // Step 6
-        // Write the missing dat file for the part volume
-        std::ofstream file(baseFile + ".part.dat");
-        file << "Rawfile: " << filesystem::getFileNameWithoutExtension(subSampleVolumeFile) + ".part.raw" << '\n';
-        file << "Resolution: " << subSampledSize.x << " " << subSampledSize.y << " " << subSampledSize.z << '\n';
-        file << "Format: UINT32\n";
-
-        const glm::size_t minSize = glm::compMin(subSampledSize);
-        file << "BasisVector1: " << float(subSampledSize.x) / float(minSize) << " 0.0 0.0\n";
-        file << "BasisVector2: " << "0.0 " << float(subSampledSize.y) / float(minSize) << " 0.0\n";
-        file << "BasisVector3: " << "0.0 0.0 " << float(subSampledSize.z) / float(minSize) << "\n";
-        file << '\n';
-    }
-    
-    _fullVolumeFile = baseVolumeFile;
-    _subsampledVolumeFile = subSampleVolumeFile;
-
+    const std::string baseVolumeFile = _baseVolume.get();
+    const std::string subSampleVolumeFile = _subsampledVolumeFile.get();
     const std::string baseFile =
         filesystem::getFileDirectory(baseVolumeFile) + '/' +
         filesystem::getFileNameWithoutExtension(subSampleVolumeFile);
+
+    const glm::size3_t subSampledSize = scaledVolume->getDimensions();
+    contourtree::Grid3D grid(subSampledSize.x, subSampledSize.y, subSampledSize.z);
+    grid.loadGrid(QString::fromStdString(baseFile + ".raw"));
+    contourtree::MergeTree ct;
+    contourtree::TreeType tree = contourtree::TypeJoinTree;
+    ct.computeTree(&grid, tree);
+    ct.output(QString::fromStdString(baseFile), tree);
+
+
+    contourtree::ContourTreeData ctdata;
+    ctdata.loadBinFile(QString::fromStdString(baseFile));
+
+    contourtree::SimplifyCT sim;
+    sim.setInput(&ctdata);
+    bool persistence = false;
+    contourtree::SimFunction* simFn;
+    if (persistence) {
+        simFn = new contourtree::Persistence(ctdata);
+    }
+    else {
+        simFn = new contourtree::HyperVolume(ctdata, QString::fromStdString(baseFile + ".part.raw"));
+    }
+    sim.simplify(simFn);
+    sim.outputOrder(QString::fromStdString(baseFile));
+
+    // Step 6
+    // Write the missing dat file for the part volume
+    std::ofstream file(baseFile + ".part.dat");
+    file << "Rawfile: " << filesystem::getFileNameWithoutExtension(subSampleVolumeFile) + ".part.raw" << '\n';
+    file << "Resolution: " << subSampledSize.x << " " << subSampledSize.y << " " << subSampledSize.z << '\n';
+    file << "Format: UINT32\n";
+
+    const glm::size_t minSize = glm::compMin(subSampledSize);
+    file << "BasisVector1: " << float(subSampledSize.x) / float(minSize) << " 0.0 0.0\n";
+    file << "BasisVector2: " << "0.0 " << float(subSampledSize.y) / float(minSize) << " 0.0\n";
+    file << "BasisVector3: " << "0.0 0.0 " << float(subSampledSize.z) / float(minSize) << "\n";
+    file << '\n';
+    //}
+    
+    _fullVolumeFile = baseVolumeFile;
+    //_subsampledVolumeFile = subSampleVolumeFile;
+
+    //const std::string baseFile =
+    //    filesystem::getFileDirectory(baseVolumeFile) + '/' +
+    //    filesystem::getFileNameWithoutExtension(subSampleVolumeFile);
 
 
     _partVolumeFile =

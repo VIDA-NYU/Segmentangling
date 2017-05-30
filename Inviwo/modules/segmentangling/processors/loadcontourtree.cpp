@@ -71,6 +71,11 @@ const ProcessorInfo LoadContourTree::getProcessorInfo() const {
 }
 
 void LoadContourTree::process() {
+    if (!filesystem::fileExists(_contourTreeFile.get() + ".dat")) {
+        return;
+    }
+
+
     if (_fileIsDirty) {
         std::string file = _contourTreeFile;
         try {

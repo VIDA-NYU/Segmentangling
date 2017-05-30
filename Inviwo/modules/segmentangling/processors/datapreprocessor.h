@@ -5,6 +5,7 @@
 #include <inviwo/core/common/inviwo.h>
 #include <inviwo/core/processors/processor.h>
 #include <inviwo/core/properties/stringproperty.h>
+#include <inviwo/core/properties/buttonproperty.h>
 #include <modules/segmentangling/common.h>
 
 namespace inviwo {
@@ -21,11 +22,13 @@ protected:
     virtual void process() override;
 
     FileProperty _baseVolume;
-
     FileProperty _subsampledVolumeFile;
+
     FileProperty _fullVolumeFile;
     FileProperty _partVolumeFile;
     StringProperty _contourTreeFile;
+
+    ButtonProperty _loadButton;
 
     bool _volumeIsDirty;
 };
