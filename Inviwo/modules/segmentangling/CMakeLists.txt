@@ -1,9 +1,6 @@
 #--------------------------------------------------------------------
 ivw_module(Segmentangling)
 
-ivw_include_directories(${CMAKE_CURRENT_SOURCE_DIR}/ext/qhull/src)
-
-
 #--------------------------------------------------------------------
 # Add header files
 set(HEADER_FILES 
@@ -63,7 +60,6 @@ ivw_group("Shader Files" ${SHADER_FILES})
 
 #--------------------------------------------------------------------
 # Add definition
-ivw_add_definition(__CL_ENABLE_EXCEPTIONS)
 
 # ivw_add_dependencies_on_target(target ${${mod}_target} "ext/qhull/lib/qhullcpp.lib" "ext/qhull/lib/qhullstatic.lib" "ext/qhull/lib/qhullstatic_r.lib")
 
@@ -71,8 +67,16 @@ ivw_add_definition(__CL_ENABLE_EXCEPTIONS)
 # Create module
 ivw_create_module(${SOURCE_FILES} ${HEADER_FILES} ${SHADER_FILES})
 
+
+target_include_directories(inviwo-module-segmentangling PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/ext/qhull/src")
+target_compile_definitions(inviwo-module-segmentangling PUBLIC "__CL_ENABLE_EXCEPTIONS")
+
+find_package(Qt5Core)
+target_link_libraries(inviwo-module-segmentangling PUBLIC Qt5::Core)
+
 target_link_libraries(
-    ${${mod}_target} 
+    ${${mod}_target}
+    PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/ext/qhull/lib/qhullcpp.lib"
     # "${CMAKE_CURRENT_SOURCE_DIR}/ext/qhull/lib/qhullstatic.lib"
     "${CMAKE_CURRENT_SOURCE_DIR}/ext/qhull/lib/qhullstatic_r.lib"

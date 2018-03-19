@@ -13,7 +13,7 @@ const ProcessorInfo VolumeSliceOverlay::processorInfo_{
 VolumeSliceOverlay::VolumeSliceOverlay()
     : VolumeSliceGL()
 {
-    shader_ = Shader("standard.vert", "volumesliceoverlay.frag", false);
+    //shader_ = Shader("standard.vert", "volumesliceoverlay.frag", false);
 }
 
 const ProcessorInfo VolumeSliceOverlay::getProcessorInfo() const {

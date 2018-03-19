@@ -16,8 +16,11 @@ SegmentanglingModule::SegmentanglingModule(InviwoApplication* app)
 {
     ShaderManager::getPtr()->addShaderSearchPath(getPath(ModulePath::GLSL));
 
-    registerPort<DataOutport<GLuint>>("bufferOutport");
-    registerPort<DataInport<GLuint>>("bufferInport");
+    registerPort<DataOutport<GLuint>>();
+    registerPort<DataInport<GLuint>>();
+
+    //registerPort<DataOutport<GLuint>>("bufferOutport");
+    //registerPort<DataInport<GLuint>>("bufferInport");
 
     registerProcessor<ContourFilter>();
     registerProcessor<DataPreprocessor>();
