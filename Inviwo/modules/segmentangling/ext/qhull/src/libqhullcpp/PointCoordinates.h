@@ -1,15 +1,17 @@
 /****************************************************************************
 **
 ** Copyright (c) 2009-2015 C.B. Barber. All rights reserved.
-** $Id: //main/2015/qhull/src/libqhullcpp/PointCoordinates.h#4 $$Change: 2079 $
-** $DateTime: 2016/02/07 17:43:34 $$Author: bbarber $
+** $Id: //main/2015/qhull/src/libqhullcpp/PointCoordinates.h#3 $$Change: 2066 $
+** $DateTime: 2016/01/18 19:29:17 $$Author: bbarber $
 **
 ****************************************************************************/
 
 #ifndef QHPOINTCOORDINATES_H
 #define QHPOINTCOORDINATES_H
 
-#include "libqhull_r/qhull_ra.h"
+extern "C" {
+    #include "libqhull_r/qhull_ra.h"
+}
 #include "libqhullcpp/QhullPoints.h"
 #include "libqhullcpp/Coordinates.h"
 

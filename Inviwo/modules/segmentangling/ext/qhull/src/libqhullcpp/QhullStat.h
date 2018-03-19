@@ -1,15 +1,17 @@
 /****************************************************************************
 **
 ** Copyright (c) 2008-2015 C.B. Barber. All rights reserved.
-** $Id: //main/2015/qhull/src/libqhullcpp/QhullStat.h#2 $$Change: 2079 $
-** $DateTime: 2016/02/07 17:43:34 $$Author: bbarber $
+** $Id: //main/2015/qhull/src/libqhullcpp/QhullStat.h#1 $$Change: 1981 $
+** $DateTime: 2015/09/28 20:26:32 $$Author: bbarber $
 **
 ****************************************************************************/
 
 #ifndef QHULLSTAT_H
 #define QHULLSTAT_H
 
-#include "libqhull_r/qhull_ra.h"
+extern "C" {
+    #include "libqhull_r/qhull_ra.h"
+}
 
 #include <string>
 #include <vector>

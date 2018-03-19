@@ -1,15 +1,17 @@
 /****************************************************************************
 **
 ** Copyright (c) 2008-2015 C.B. Barber. All rights reserved.
-** $Id: //main/2015/qhull/src/libqhullcpp/QhullSet.h#6 $$Change: 2079 $
-** $DateTime: 2016/02/07 17:43:34 $$Author: bbarber $
+** $Id: //main/2015/qhull/src/libqhullcpp/QhullSet.h#5 $$Change: 2066 $
+** $DateTime: 2016/01/18 19:29:17 $$Author: bbarber $
 **
 ****************************************************************************/
 
 #ifndef QhullSet_H
 #define QhullSet_H
 
-#include "libqhull_r/qhull_ra.h"
+extern "C" {
+    #include "libqhull_r/qhull_ra.h"
+}
 #include "libqhullcpp/QhullError.h"
 #include "libqhullcpp/QhullQh.h"
 
@@ -325,8 +327,8 @@ template <typename T>
 std::vector<T> QhullSet<T>::
 toStdVector() const
 {
-	typename QhullSet<T>::const_iterator i = begin();
-	typename QhullSet<T>::const_iterator e = end();
+    QhullSet<T>::const_iterator i= begin();
+    QhullSet<T>::const_iterator e= end();
     std::vector<T> vs;
     while(i!=e){
         vs.push_back(*i++);

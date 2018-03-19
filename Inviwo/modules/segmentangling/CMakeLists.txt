@@ -77,9 +77,24 @@ target_link_libraries(inviwo-module-segmentangling PUBLIC Qt5::Core)
 target_link_libraries(
     ${${mod}_target}
     PUBLIC
-    "${CMAKE_CURRENT_SOURCE_DIR}/ext/qhull/lib/qhullcpp.lib"
-    # "${CMAKE_CURRENT_SOURCE_DIR}/ext/qhull/lib/qhullstatic.lib"
-    "${CMAKE_CURRENT_SOURCE_DIR}/ext/qhull/lib/qhullstatic_r.lib"
+    debug "${CMAKE_CURRENT_SOURCE_DIR}/ext/qhull/lib/qhullcpp_d.lib"
+    debug "${CMAKE_CURRENT_SOURCE_DIR}/ext/qhull/lib/qhullstatic_rd.lib"
+    optimized "${CMAKE_CURRENT_SOURCE_DIR}/ext/qhull/lib/qhullcpp.lib"
+    optimized "${CMAKE_CURRENT_SOURCE_DIR}/ext/qhull/lib/qhullstatic_r.lib"
+
+    
+    # debug "${CMAKE_CURRENT_SOURCE_DIR}/ext/qhull/lib/qhullcpp_d.lib"
+    # debug "${CMAKE_CURRENT_SOURCE_DIR}/ext/qhull/lib/qhull_d.lib"
+    # debug "${CMAKE_CURRENT_SOURCE_DIR}/ext/qhull/lib/qhull_rd.lib"
+    # debug "${CMAKE_CURRENT_SOURCE_DIR}/ext/qhull/lib/qhull_pd.lib"
+    # debug "${CMAKE_CURRENT_SOURCE_DIR}/ext/qhull/lib/qhullstatic_d.lib"
+    # debug "${CMAKE_CURRENT_SOURCE_DIR}/ext/qhull/lib/qhullstatic_rd.lib"
+    # optimized "${CMAKE_CURRENT_SOURCE_DIR}/ext/qhull/lib/qhullcpp.lib"
+    # optimized "${CMAKE_CURRENT_SOURCE_DIR}/ext/qhull/lib/qhull.lib"
+    # optimized "${CMAKE_CURRENT_SOURCE_DIR}/ext/qhull/lib/qhull_r.lib"
+    # optimized "${CMAKE_CURRENT_SOURCE_DIR}/ext/qhull/lib/qhull_p.lib"
+    # optimized "${CMAKE_CURRENT_SOURCE_DIR}/ext/qhull/lib/qhullstatic.lib"
+    # optimized "${CMAKE_CURRENT_SOURCE_DIR}/ext/qhull/lib/qhullstatic_r.lib"
 )
 
 #--------------------------------------------------------------------

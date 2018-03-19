@@ -1,15 +1,17 @@
 /****************************************************************************
 **
 ** Copyright (c) 2009-2015 C.B. Barber. All rights reserved.
-** $Id: //main/2015/qhull/src/libqhullcpp/QhullPoints.h#5 $$Change: 2079 $
-** $DateTime: 2016/02/07 17:43:34 $$Author: bbarber $
+** $Id: //main/2015/qhull/src/libqhullcpp/QhullPoints.h#4 $$Change: 2066 $
+** $DateTime: 2016/01/18 19:29:17 $$Author: bbarber $
 **
 ****************************************************************************/
 
 #ifndef QHULLPOINTS_H
 #define QHULLPOINTS_H
 
-#include "libqhull_r/qhull_ra.h"
+extern "C" {
+    #include "libqhull_r/qhull_ra.h"
+}
 #include "libqhullcpp/QhullPoint.h"
 
 #include <cstddef>  // ptrdiff_t, size_t
