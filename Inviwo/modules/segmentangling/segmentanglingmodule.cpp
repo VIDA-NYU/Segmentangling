@@ -5,6 +5,7 @@
 #include <modules/segmentangling/processors/datapreprocessor.h>
 #include <modules/segmentangling/processors/loadcontourtree.h>
 #include <modules/segmentangling/processors/segmentationidraycaster.h>
+#include <modules/segmentangling/processors/straightener.h>
 #include <modules/segmentangling/processors/volumecollectiongenerator.h>
 #include <modules/segmentangling/processors/volumeexportgenerator.h>
 #include <modules/segmentangling/processors/volumesliceoverlay.h>
@@ -26,6 +27,7 @@ SegmentanglingModule::SegmentanglingModule(InviwoApplication* app)
     registerProcessor<DataPreprocessor>();
     registerProcessor<LoadContourTree>();
     registerProcessor<SegmentationIdRaycaster>();
+    registerProcessor<Straightener>();
     registerProcessor<VolumeCollectionGenerator>();
     registerProcessor<VolumeExportGenerator>();
     registerProcessor<VolumeSliceOverlay>();
