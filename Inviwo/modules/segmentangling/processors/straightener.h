@@ -34,13 +34,22 @@ protected:
 private:
     void slimThread();
     void eventUpdateMousePos(Event* e);
-    void eventUpdateKeyboard(Event* e);
-    void eventUpdateKeyboardReset(Event* e);
+    void eventSelectPoint();
+    void eventReset();
+    void eventPreviousParameter();
+    void eventNextParameter();
+    void eventPreviousLevelset();
+    void eventNextLevelset();
     void diffusionDistances();
     void updateConstraints();
 
-    std::shared_ptr<BasicMesh> createMesh(const Eigen::MatrixXd& TV);
+    std::shared_ptr<BasicMesh> createOutputSurfaceMesh(const Eigen::MatrixXd& TV);
 
+
+
+    //
+    // Handling the state
+    //
     enum class SelectionState {
         None = 0,
         Front,
@@ -49,14 +58,57 @@ private:
 
     SelectionState _currentSelectionState = SelectionState::Front;
 
+    std::string selectionStateToString(SelectionState s) {
+        switch (s) {
+            case SelectionState::None:
+                return "";
+            case SelectionState::Front:
+                return "Select front";
+            case SelectionState::Back:
+                return "Select back";
+            default:
+                return "HUH!?";
+        }
+    }
+    void updateSelectionStateString();
+    StringProperty _selectionStateString;
 
+
+
+    //
+    // Input states
+    //
+    struct InputParams {
+        int frontVertexId = -1;
+        int backVertexId = -1;
+        std::vector<float> levelSetOrientations;
+
+        std::vector<float>::iterator currentLevelset = levelSetOrientations.end();
+    };
+
+    std::vector<InputParams> _inputParameters;
+    std::vector<InputParams>::iterator _currentInputParameter;
+
+    void updateInputParameterString();
+    StringProperty _inputParameterSelection;
+
+
+
+    //
+    // Ports
+    //
     VolumeInport _inport;
     MeshOutport _meshOutport;
-    MeshOutport _frontSelectionMesh;
-    MeshOutport _backSelectionMesh;
+    std::shared_ptr<BasicMesh> _outputSurfaceMesh;
+    //MeshOutport _frontSelectionMesh;
+    //MeshOutport _backSelectionMesh;
     ImageOutport _imageOutport;
-    //VolumeOutport _outport;
 
+
+
+    //
+    // Properties
+    //
     BoolProperty _debugOnlyEndAndTets;
     CameraProperty _camera;
 
@@ -65,12 +117,27 @@ private:
     ButtonProperty _reload;
     bool _filenameDirty = false;
     
-    EventProperty _mousePositionTracker;
-    
-    EventProperty _keyboardPressSelect;
-    EventProperty _keyboardPressReset;
+
+    //
+    // Mouse events
+    //
+    EventProperty _eventPositionUpdate;
 
 
+
+    //
+    // Keyboard events
+    //
+    EventProperty _eventSelectPoint;
+    EventProperty _eventReset;
+    EventProperty _eventPreviousInputParameter;
+    EventProperty _eventNextInputParameter;
+    EventProperty _eventPreviousLevelSet;
+    EventProperty _eventNextLevelSet;
+
+    //
+    // SLIM related members
+    //
     Eigen::MatrixXd _TVOriginal;
     Eigen::MatrixXd _TV;
     Eigen::MatrixXi _TF;
@@ -83,18 +150,15 @@ private:
     bool _isSlimRunning;
     std::thread _slimThread;
     bool _isConstraintsChanged;
-    std::mutex _constraintsLock;
     std::mutex _drawStateLock;
-
-    int _currentVertexId;
-
-    int _currentFrontVertexId = -1;
-    int _currentBackVertexId = -1;
-
-
     ConstraintState _constraintState;
+    std::mutex _constraintsLock;
 
-    std::shared_ptr<BasicMesh> _outputSurfaceMesh;
+    
+    //
+    // Across-frames members
+    //
+    int _currentHoverVertexId;
 };
 
 } // namespace
