@@ -16,6 +16,9 @@
 #include <modules/opengl/rendering/meshdrawergl.h>
 
 #include <modules/segmentangling/util/fresh_new_utils.h>
+#include <modules/opengl/openglutils.h>
+#include <modules/opengl/texture/textureutils.h>
+
 
 using namespace fresh_prince_of_utils;
 
@@ -23,14 +26,29 @@ namespace inviwo {
 
 int iterCount = 0;
 
+std::string Straightener::selectionStateToString(SelectionState s) {
+    switch (s) {
+        case SelectionState::None:
+            return "Segment finished";
+        case SelectionState::Front:
+            return "Select front";
+        case SelectionState::Back:
+            return "Select back";
+        default:
+            return "HUH!?";
+    }
+}
+
+
 void Straightener::slimThread() {
     using namespace std;
     using namespace Eigen;
 
-    igl::SLIMData sData;
 
     //m_ui_state.m_avg_draw_state_update_time = 0.0;
     //m_ui_state.m_avg_slim_time = 0.0;
+
+    igl::SLIMData sData;
 
     cout << "INFO: SLIM Thread: Starting SLIM background thread." << endl;
     while (_isSlimRunning) {
@@ -44,8 +62,16 @@ void Straightener::slimThread() {
             const double soft_const_p = 1e5;
             const MatrixXd TV_0 = _TV;
             sData.exp_factor = 5.0;
-            slim_precompute(_TVOriginal, _TT, TV_0, sData, igl::SLIMData::EXP_CONFORMAL,
-                slim_b, slim_bc, soft_const_p);
+            slim_precompute(
+                _TVOriginal,
+                _TT,
+                TV_0,
+                sData,
+                igl::SLIMData::EXP_CONFORMAL,
+                slim_b,
+                slim_bc,
+                soft_const_p
+            );
             _isConstraintsChanged = false;
         }
         _constraintsLock.unlock();
@@ -56,12 +82,13 @@ void Straightener::slimThread() {
         }
         LogInfo("Iteration: " << iterCount);
         ++iterCount;
-        //auto slim_start_time = chrono::high_resolution_clock::now();
         igl::slim_solve(sData, 1);
 
-        _drawStateLock.lock();
-        _outputSurfaceMesh = createMesh(sData.V_o);
-        _drawStateLock.unlock();
+        _slimDataMutex.lock();
+        _slimDataOutput = sData.V_o;
+        _slimDataMutex.unlock();
+
+        _isOutputMeshDirty = true;
 
 
 
@@ -99,7 +126,7 @@ Straightener::Straightener()
     : Processor()
     , _inport("volumeInport")
     , _meshOutport("meshOutport")
-    , _imageOutport("imageOutput")
+    //, _imageOutport("imageOutput")
     , _frontSelectionMesh("frontSelectionMesh")
     , _backSelectionMesh("backSelectionMesh")
     , _debugOnlyEndAndTets("onlyEndsAndTets", "_debugOnlyEndAndTets", false)
@@ -108,49 +135,63 @@ Straightener::Straightener()
     , _camera("camera", "Camera")
     , _filename("filename", "Mesh File")
     , _reload("reload", "Reload")
+    , _windowSize("_windowSize", "Window Size")
+    , _levelsetPlane{
+        FloatVec3Property("levelset_normal", "Normal"),
+        FloatVec3Property("levelset_position", "Position"),
+    }
     , _eventPositionUpdate("_eventPositionUpdate", "Mouse Position Tracker",
         [this](Event* e) { eventUpdateMousePos(e); },
         MouseButton::None, MouseState::Move
     )
-    , _eventSelectPoint("_eventSelectPoint", "keyboardPress",
-        [this](Event* e) { eventSelectPoint(); },
+    , _eventStartDiffusion("_eventStartDiffusion", "Start Diffusion",
+        [this](Event*) { eventStartDiffusion(); },
         IvwKey::Space
     )
+    , _eventSelectPoint("_eventSelectPoint", "keyboardPress",
+        [this](Event*) { eventSelectPoint(); },
+        IvwKey::Tab
+    )
     , _eventReset("_eventReset", "keyboardPressReset",
-        [this](Event* e) { eventReset(); },
+        [this](Event*) { eventReset(); },
         IvwKey::F1
     )
     , _eventPreviousInputParameter("_eventPreviousInputParameter", "Previous input parameter",
-        [this](Event* e) { eventPreviousParameter(); },
+        [this](Event*) { eventPreviousParameter(); },
         IvwKey::A
     )
     , _eventNextInputParameter("_eventNextInputParameter", "Next input parameter",
-        [this](Event* e) { eventNextParameter(); },
+        [this](Event*) { eventNextParameter(); },
         IvwKey::D
     )
     , _eventPreviousLevelSet("_eventPreviousLevelSet", "Previous level set",
-        [this](Event* e) { eventPreviousLevelset(); },
-        IvwKey::S
+        [this](Event*) { eventPreviousLevelset(); },
+        IvwKey::W
     )
     , _eventNextLevelSet("_eventNextLevelSet", "Previous level set",
-        [this](Event* e) { eventNextLevelset(); },
+        [this](Event*) { eventNextLevelset(); },
         IvwKey::S
     )
     , _inputParameters(1)
     , _currentInputParameter(_inputParameters.begin())
     , _inputParameterSelection("_inputParameterSelection", "Input parameter Selection")
+    , _isDebugging("_isDebugging", "Debugging")
 {
     // Ports
     addPort(_inport);
     addPort(_meshOutport);
-    addPort(_imageOutport);
+    //addPort(_imageOutport);
     addPort(_frontSelectionMesh);
     addPort(_backSelectionMesh);
 
     // Useful properties
-
+    addProperty(_levelsetPlane.normal);
+    addProperty(_levelsetPlane.position);
 
     // Internal properties
+    _windowSize.setReadOnly(true);
+    addProperty(_windowSize);
+
     addProperty(_filename);
     _filename.onChange([this]() {
         _filenameDirty = true;
@@ -161,6 +202,7 @@ Straightener::Straightener()
         _filenameDirty = true;
     });
 
+    addProperty(_isDebugging);
 
     addProperty(_camera);
     addProperty(_nBones);
@@ -169,6 +211,7 @@ Straightener::Straightener()
 
     // Events
     addProperty(_eventPositionUpdate);
+    addProperty(_eventStartDiffusion);
     addProperty(_eventSelectPoint);
     addProperty(_eventReset);
     addProperty(_eventPreviousInputParameter);
@@ -183,6 +226,10 @@ Straightener::Straightener()
     _isSlimRunning = true;
     _slimThread = std::thread(&Straightener::slimThread, this);
 
+    _frontSelectionMesh.setData(std::make_shared<BasicMesh>());
+    _backSelectionMesh.setData(std::make_shared<BasicMesh>());
+
+
     updateSelectionStateString();
     updateInputParameterString();
 }
@@ -195,6 +242,15 @@ Straightener::~Straightener() {
 }
 
 void Straightener::process() {
+    if (_isFirstFrame) {
+        // Update the text that is stored in the workspace
+
+        updateSelectionStateString();
+        updateInputParameterString();
+
+        _isFirstFrame = false;
+    }
+
     if (_filenameDirty) {
         std::string filename = _filename;
         load_yixin_tetmesh(filename, _TVOriginal, _TF, _TT);
@@ -221,17 +277,24 @@ void Straightener::process() {
 
         _filenameDirty = false;
 
-        _outputSurfaceMesh = createMesh(_TV);
+        
+        _meshLock.lock();
+        _outputSurfaceMesh = createOutputSurfaceMesh(_TV);
         _meshOutport.setData(_outputSurfaceMesh);
+        _meshLock.unlock();
     }
 
-    _drawStateLock.lock();
-    _meshOutport.setData(_outputSurfaceMesh);
-    _drawStateLock.unlock();
 
+    if (_isOutputMeshDirty) {
+        LogInfo("Update mesh");
+        std::lock_guard<std::mutex>g(_slimDataMutex);
+        _outputSurfaceMesh = createOutputSurfaceMesh(_slimDataOutput);
+        _meshOutport.setData(_outputSurfaceMesh);
+        _isOutputMeshDirty = false;
+    }
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(1));
-    invalidate(InvalidationLevel::InvalidOutput);
+    //std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    //invalidate(InvalidationLevel::InvalidOutput);
 }
 
 void Straightener::diffusionDistances() {
@@ -278,7 +341,7 @@ void Straightener::updateConstraints() {
     _isConstraintsChanged = true;
 }
 
-std::shared_ptr<BasicMesh> Straightener::createMesh(const Eigen::MatrixXd& TV) {
+std::shared_ptr<BasicMesh> Straightener::createOutputSurfaceMesh(const Eigen::MatrixXd& TV) {
     std::shared_ptr<BasicMesh> mesh = std::make_shared<BasicMesh>();
     mesh->setModelMatrix(mat4());
     auto indices = mesh->addIndexBuffer(DrawType::Triangles, ConnectivityType::None);
@@ -350,7 +413,8 @@ void Straightener::eventUpdateMousePos(Event* e) {
         p[2][0], p[2][1], p[2][2], p[2][3],
         p[3][0], p[3][1], p[3][2], p[3][3];
 
-    glm::size2_t viewportSize = _imageOutport.getData()->getDimensions();
+    glm::size2_t viewportSize = glm::size2_t(_windowSize.get());
+    //glm::size2_t viewportSize = _imageOutport.getData()->getDimensions();
 
     Eigen::Vector4f viewport;
     viewport << 0.f, 0.f, static_cast<float>(viewportSize.x), static_cast<float>(viewportSize.y);
@@ -363,7 +427,7 @@ void Straightener::eventUpdateMousePos(Event* e) {
     Eigen::Vector3f bc;
 
 
-    _drawStateLock.lock();
+    _meshLock.lock();
 
     _currentHoverVertexId = -1;
     if (igl::unproject_onto_mesh(Eigen::Vector2f(pos.x, pos.y),
@@ -376,7 +440,7 @@ void Straightener::eventUpdateMousePos(Event* e) {
         _currentHoverVertexId = _TF(fid, max);
     }
 
-    _drawStateLock.unlock();
+    _meshLock.unlock();
 
     LogInfo("Current vertex id: " << _currentHoverVertexId);
 
@@ -390,8 +454,17 @@ void Straightener::eventUpdateMousePos(Event* e) {
     LogInfo("Current back id: " << _currentInputParameter->backVertexId);
 }
 
+void Straightener::eventStartDiffusion() {
+    diffusionDistances();
+    updateConstraints();
+}
+
 void Straightener::eventSelectPoint() {
-    std::lock_guard<std::mutex> g(_drawStateLock);
+    std::lock_guard<std::mutex> g(_meshLock);
+
+    if (_currentHoverVertexId == -1) {
+        return;
+    }
 
     switch (_currentSelectionState) {
         case SelectionState::None:
@@ -408,7 +481,7 @@ void Straightener::eventSelectPoint() {
                 _TV(_currentInputParameter->frontVertexId, 1),
                 _TV(_currentInputParameter->frontVertexId, 2)
             );
-            std::shared_ptr<BasicMesh> mesh = meshutil::sphere(p, 0.05f, glm::vec4(0.f, 0.75f, 0.f, 1.f));
+            std::shared_ptr<BasicMesh> mesh = meshutil::sphere(p, 0.015f, glm::vec4(0.f, 0.75f, 0.f, 1.f));
 
             _frontSelectionMesh.setData(mesh);
             break;
@@ -425,14 +498,8 @@ void Straightener::eventSelectPoint() {
                 _TV(_currentInputParameter->backVertexId, 1),
                 _TV(_currentInputParameter->backVertexId, 2)
             );
-            std::shared_ptr<BasicMesh> mesh = meshutil::sphere(p, 0.05f, glm::vec4(0.75f, 0.f, 0.f, 1.f));
+            std::shared_ptr<BasicMesh> mesh = meshutil::sphere(p, 0.015f, glm::vec4(0.75f, 0.f, 0.f, 1.f));
             _backSelectionMesh.setData(mesh);
-
-
-            diffusionDistances();
-            updateConstraints();
-            createMesh(_TV);
-
             break;
         }
     }
@@ -450,7 +517,7 @@ void Straightener::eventReset() {
     _backSelectionMesh.setData(nullptr);
 
     _isoValues.resize(0, 0);
-    createMesh(_TV);
+    createOutputSurfaceMesh(_TV);
 }
 
 void Straightener::eventPreviousParameter() {
@@ -517,7 +584,7 @@ void Straightener::updateInputParameterString() {
         std::to_string(d + 1) +
         " of " +
         std::to_string(_inputParameters.size()) +
-        " parameters";
+        " segments";
 }
 
 

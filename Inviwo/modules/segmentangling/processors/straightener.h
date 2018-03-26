@@ -34,6 +34,7 @@ protected:
 private:
     void slimThread();
     void eventUpdateMousePos(Event* e);
+    void eventStartDiffusion();
     void eventSelectPoint();
     void eventReset();
     void eventPreviousParameter();
@@ -58,18 +59,7 @@ private:
 
     SelectionState _currentSelectionState = SelectionState::Front;
 
-    std::string selectionStateToString(SelectionState s) {
-        switch (s) {
-            case SelectionState::None:
-                return "";
-            case SelectionState::Front:
-                return "Select front";
-            case SelectionState::Back:
-                return "Select back";
-            default:
-                return "HUH!?";
-        }
-    }
+    std::string selectionStateToString(SelectionState s);
     void updateSelectionStateString();
     StringProperty _selectionStateString;
 
@@ -100,23 +90,39 @@ private:
     VolumeInport _inport;
     MeshOutport _meshOutport;
     std::shared_ptr<BasicMesh> _outputSurfaceMesh;
-    //MeshOutport _frontSelectionMesh;
-    //MeshOutport _backSelectionMesh;
-    ImageOutport _imageOutport;
+    std::atomic_bool _isOutputMeshDirty = false;
+    MeshOutport _frontSelectionMesh;
+    MeshOutport _backSelectionMesh;
+    //ImageOutport _imageOutport;
 
 
 
     //
     // Properties
     //
-    BoolProperty _debugOnlyEndAndTets;
+
+    // Input
+    StringProperty _filename;
+    bool _filenameDirty = false;
+    ButtonProperty _reload;
+
+    
+    // Output 
+    IntVec2Property _windowSize;
+    struct {
+        FloatVec3Property normal;
+        FloatVec3Property position;
+    } _levelsetPlane;
+
+
+    // Internal
     CameraProperty _camera;
 
-    StringProperty _filename;
+
+    // Testing
+    BoolProperty _debugOnlyEndAndTets;
     IntProperty _nBones;
-    ButtonProperty _reload;
-    bool _filenameDirty = false;
-    
+
 
     //
     // Mouse events
@@ -128,6 +134,7 @@ private:
     //
     // Keyboard events
     //
+    EventProperty _eventStartDiffusion;
     EventProperty _eventSelectPoint;
     EventProperty _eventReset;
     EventProperty _eventPreviousInputParameter;
@@ -147,10 +154,13 @@ private:
 
     Eigen::VectorXd _isoValues;
 
+    Eigen::MatrixXd _slimDataOutput;
+    std::mutex _slimDataMutex;
+
     bool _isSlimRunning;
     std::thread _slimThread;
     bool _isConstraintsChanged;
-    std::mutex _drawStateLock;
+    std::mutex _meshLock;
     ConstraintState _constraintState;
     std::mutex _constraintsLock;
 
@@ -159,6 +169,13 @@ private:
     // Across-frames members
     //
     int _currentHoverVertexId;
+
+
+    //
+    // Internal members
+    //
+    bool _isFirstFrame = true;
+    BoolProperty _isDebugging;
 };
 
 } // namespace
