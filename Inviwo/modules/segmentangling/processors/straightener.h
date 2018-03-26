@@ -44,6 +44,8 @@ private:
     void diffusionDistances();
     void updateConstraints();
 
+    bool isReadyToComputeDiffusion() const;
+
     std::shared_ptr<BasicMesh> createOutputSurfaceMesh(const Eigen::MatrixXd& TV);
 
 
@@ -76,12 +78,17 @@ private:
         std::vector<float>::iterator currentLevelset = levelSetOrientations.end();
     };
 
+    bool isInputParamEmpty(const InputParams& i) const;
+
     std::vector<InputParams> _inputParameters;
     std::vector<InputParams>::iterator _currentInputParameter;
 
     void updateInputParameterString();
     StringProperty _inputParameterSelection;
 
+
+    void updateDiffusionReadyString();
+    StringProperty _diffusionReadyString;
 
 
     //
@@ -93,6 +100,13 @@ private:
     std::atomic_bool _isOutputMeshDirty = false;
     MeshOutport _frontSelectionMesh;
     MeshOutport _backSelectionMesh;
+    struct {
+        MeshOutport isoValues;
+        std::shared_ptr<BasicMesh> isoMesh;
+
+        MeshOutport skeletonVertices;
+        std::shared_ptr<BasicMesh> skeletonMesh;
+    } _debug;
     //ImageOutport _imageOutport;
 
 
@@ -120,8 +134,12 @@ private:
 
 
     // Testing
+    void createDebugMeshes();
+
     BoolProperty _debugOnlyEndAndTets;
     IntProperty _nBones;
+    FloatProperty _sphereRadius;
+    
 
 
     //

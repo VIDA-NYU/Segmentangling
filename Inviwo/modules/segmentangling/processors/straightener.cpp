@@ -19,6 +19,28 @@
 #include <modules/opengl/openglutils.h>
 #include <modules/opengl/texture/textureutils.h>
 
+#include <modules/segmentangling/util/defer.h>
+
+
+namespace {
+
+glm::vec3 eigenToGLM(const Eigen::RowVector3d& rv) {
+    return glm::vec3(rv[0], rv[1], rv[2]);
+}
+
+glm::vec4 eigenToGLMColor(const Eigen::RowVector3d& rv) {
+    return glm::vec4(rv[0], rv[1], rv[2], 1.f);
+}
+
+
+//template <typename T>
+//glm::tvec3<T::Scalar> eigenToGLM(const Eigen::PlainObjectBase<T>& rv) {
+//    return glm::tvec3<T::Scalar>(
+//        rv(0, 0),
+//    );
+//}
+
+} // namespace
 
 using namespace fresh_prince_of_utils;
 
@@ -39,11 +61,16 @@ std::string Straightener::selectionStateToString(SelectionState s) {
     }
 }
 
+bool Straightener::isInputParamEmpty(const InputParams& i) const {
+    return (i.frontVertexId == -1) && (i.backVertexId == -1) && (i.levelSetOrientations.empty());
+}
+
+
 
 void Straightener::slimThread() {
     using namespace std;
     using namespace Eigen;
-
+    return;
 
     //m_ui_state.m_avg_draw_state_update_time = 0.0;
     //m_ui_state.m_avg_slim_time = 0.0;
@@ -129,11 +156,19 @@ Straightener::Straightener()
     //, _imageOutport("imageOutput")
     , _frontSelectionMesh("frontSelectionMesh")
     , _backSelectionMesh("backSelectionMesh")
+    , _debug {
+        MeshOutport("debug_isoValues"),
+        meshutil::sphere({ 0.f, 0.f, 0.f }, 0.f, glm::vec4(0.f)),
+        MeshOutport("debug_skeletonVertices"),
+        meshutil::sphere({ 0.f, 0.f, 0.f }, 0.f, glm::vec4(0.f))
+    }
+    //, _debugMeshOutput("debugOutput")
     , _debugOnlyEndAndTets("onlyEndsAndTets", "_debugOnlyEndAndTets", false)
     , _selectionStateString("selectionState", "SelectionState")
     , _nBones("_nBones", "Number of Bones", 25, 1, 100)
     , _camera("camera", "Camera")
     , _filename("filename", "Mesh File")
+    , _sphereRadius("_sphereRadius", "Sphere Radius", 0.00075f, 0.f, 0.015f)
     , _reload("reload", "Reload")
     , _windowSize("_windowSize", "Window Size")
     , _levelsetPlane{
@@ -176,6 +211,7 @@ Straightener::Straightener()
     , _currentInputParameter(_inputParameters.begin())
     , _inputParameterSelection("_inputParameterSelection", "Input parameter Selection")
     , _isDebugging("_isDebugging", "Debugging")
+    , _diffusionReadyString("_diffusionReadyString", "Diffusion Ready")
 {
     // Ports
     addPort(_inport);
@@ -183,6 +219,8 @@ Straightener::Straightener()
     //addPort(_imageOutport);
     addPort(_frontSelectionMesh);
     addPort(_backSelectionMesh);
+    addPort(_debug.isoValues);
+    addPort(_debug.skeletonVertices);
 
     // Useful properties
     addProperty(_levelsetPlane.normal);
@@ -203,6 +241,9 @@ Straightener::Straightener()
     });
 
     addProperty(_isDebugging);
+    _sphereRadius.onChange([this]() { createDebugMeshes(); });
+    addProperty(_sphereRadius);
+
 
     addProperty(_camera);
     addProperty(_nBones);
@@ -220,6 +261,7 @@ Straightener::Straightener()
     // Output properties
     addProperty(_selectionStateString);
     addProperty(_inputParameterSelection);
+    addProperty(_diffusionReadyString);
 
 
     // Rest of ctor
@@ -228,7 +270,7 @@ Straightener::Straightener()
 
     _frontSelectionMesh.setData(std::make_shared<BasicMesh>());
     _backSelectionMesh.setData(std::make_shared<BasicMesh>());
-
+    //_debugMesh = meshutil::sphere({ 0.f, 0.f, 0.f }, 0.f, glm::vec4(0.f));
 
     updateSelectionStateString();
     updateInputParameterString();
@@ -247,6 +289,7 @@ void Straightener::process() {
 
         updateSelectionStateString();
         updateInputParameterString();
+        updateDiffusionReadyString();
 
         _isFirstFrame = false;
     }
@@ -293,9 +336,23 @@ void Straightener::process() {
         _isOutputMeshDirty = false;
     }
 
+    _debug.isoValues.setData(_debug.isoMesh);
+    _debug.skeletonVertices.setData(_debug.skeletonMesh);
+
     //std::this_thread::sleep_for(std::chrono::milliseconds(1));
     //invalidate(InvalidationLevel::InvalidOutput);
 }
+
+bool Straightener::isReadyToComputeDiffusion() const {
+    // Check that all specified segments have start and end points
+    for (const InputParams& i : _inputParameters) {
+        if ((i.frontVertexId == -1) || (i.backVertexId == -1)) {
+            return false;
+        }
+    }
+    return true;
+}
+
 
 void Straightener::diffusionDistances() {
     using namespace std;
@@ -359,7 +416,8 @@ std::shared_ptr<BasicMesh> Straightener::createOutputSurfaceMesh(const Eigen::Ma
 
         glm::vec4 c = _isoValues.rows() == 0 ?
             glm::vec4((p * float(maxDim)) / glm::vec3(_inport.getData()->getDimensions()) + glm::vec3(1.f), 1.f) :
-            glm::vec4(colors(i, 0), colors(i, 1), colors(i, 2), 1.f);
+            eigenToGLMColor(colors.row(i));
+            //glm::vec4(colors(i, 0), colors(i, 1), colors(i, 2), 1.f);
 
         mesh->addVertex(
             p, // pos
@@ -379,6 +437,37 @@ std::shared_ptr<BasicMesh> Straightener::createOutputSurfaceMesh(const Eigen::Ma
 
     return mesh;
 }
+
+void Straightener::createDebugMeshes() {
+    _debug.isoMesh = meshutil::sphere({ 0.f, 0.f, 0.f }, 0.f, glm::vec4(0.f));
+    //_debugMesh->setModelMatrix(mat4());
+
+    Eigen::MatrixXd colors;
+    if (_isoValues.rows() != 0) {
+        igl::colormap(igl::ColorMapType::COLOR_MAP_TYPE_INFERNO, _isoValues, false, colors);
+    }
+
+
+    for (int i = 0; i < _TV.rows(); ++i) {
+        glm::vec3 p = eigenToGLM(_TV.row(i));
+        glm::vec4 c = _isoValues.rows() == 0 ? glm::vec4(1.f) : eigenToGLMColor(colors.row(i));
+        //glm::vec4(colors(i, 0), colors(i, 1), colors(i, 2), 1.f);
+
+        std::shared_ptr<BasicMesh> m = meshutil::sphere(p, _sphereRadius, c);
+
+        _debug.isoMesh->append(m.get());
+    }
+
+
+    _debug.skeletonMesh = meshutil::sphere({ 0.f, 0.f, 0.f }, 0.f, glm::vec4(0.f));
+
+
+
+    invalidate(InvalidationLevel::InvalidOutput);
+    //_debugMeshOutput.setData(_debugMesh);
+}
+
+
 
 //////////////////////////////////////////////////////////////////////////////////////////
 //                                Event Handlers
@@ -455,12 +544,16 @@ void Straightener::eventUpdateMousePos(Event* e) {
 }
 
 void Straightener::eventStartDiffusion() {
-    diffusionDistances();
-    updateConstraints();
+    if (isReadyToComputeDiffusion()) {
+        diffusionDistances();
+        createDebugMeshes();
+        updateConstraints();
+    }
 }
 
 void Straightener::eventSelectPoint() {
     std::lock_guard<std::mutex> g(_meshLock);
+    defer { updateDiffusionReadyString(); };
 
     if (_currentHoverVertexId == -1) {
         return;
@@ -508,6 +601,8 @@ void Straightener::eventSelectPoint() {
 }
 
 void Straightener::eventReset() {
+    defer { updateDiffusionReadyString(); };
+
     _currentSelectionState = SelectionState::None;
     _inputParameters.clear();
     _inputParameters.resize(1);
@@ -521,10 +616,17 @@ void Straightener::eventReset() {
 }
 
 void Straightener::eventPreviousParameter() {
+    defer { updateDiffusionReadyString(); };
+
     LogInfo("Selecting previous input parameter set");
 
     if (_currentInputParameter != _inputParameters.begin()) {
         --_currentInputParameter;
+
+        auto oldParameter = std::next(_currentInputParameter);
+        if (isInputParamEmpty(*(oldParameter))) {
+            _inputParameters.erase(oldParameter);
+        }
 
         updateInputParameterString();
     }
@@ -543,6 +645,7 @@ void Straightener::eventNextParameter() {
     }
 
     updateInputParameterString();
+    updateDiffusionReadyString();
 }
 
 void Straightener::eventPreviousLevelset() {
@@ -554,6 +657,8 @@ void Straightener::eventPreviousLevelset() {
     }
 
     --(_currentInputParameter->currentLevelset);
+
+    updateDiffusionReadyString();
 }
 
 void Straightener::eventNextLevelset() {
@@ -565,6 +670,8 @@ void Straightener::eventNextLevelset() {
     }
 
     ++(_currentInputParameter->currentLevelset);
+
+    updateDiffusionReadyString();
 }
 
 
@@ -586,6 +693,14 @@ void Straightener::updateInputParameterString() {
         std::to_string(_inputParameters.size()) +
         " segments";
 }
+
+void Straightener::updateDiffusionReadyString() {
+    _diffusionReadyString = isReadyToComputeDiffusion() ? "Ready" : "";
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////
+//                                  Inviiiiiiwo
+//////////////////////////////////////////////////////////////////////////////////////////
 
 
 const ProcessorInfo Straightener::getProcessorInfo() const {

@@ -14,6 +14,7 @@ set(HEADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/processors/volumeexportgenerator.h
     ${CMAKE_CURRENT_SOURCE_DIR}/processors/volumesliceoverlay.h
     ${CMAKE_CURRENT_SOURCE_DIR}/util/constraintsstate.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/util/defer.h
     ${CMAKE_CURRENT_SOURCE_DIR}/util/fresh_new_utils.h
 
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../ContourTree/constants.h
