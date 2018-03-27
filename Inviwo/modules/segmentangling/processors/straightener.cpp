@@ -15,7 +15,7 @@
 #include <modules/base/algorithm/meshutils.h>
 #include <modules/opengl/rendering/meshdrawergl.h>
 
-#include <modules/segmentangling/util/fresh_new_utils.h>
+#include <utils/utils.h>
 #include <modules/opengl/openglutils.h>
 #include <modules/opengl/texture/textureutils.h>
 
@@ -41,8 +41,6 @@ glm::vec4 eigenToGLMColor(const Eigen::RowVector3d& rv) {
 //}
 
 } // namespace
-
-using namespace fresh_prince_of_utils;
 
 namespace inviwo {
 
@@ -70,7 +68,6 @@ bool Straightener::isInputParamEmpty(const InputParams& i) const {
 void Straightener::slimThread() {
     using namespace std;
     using namespace Eigen;
-    return;
 
     //m_ui_state.m_avg_draw_state_update_time = 0.0;
     //m_ui_state.m_avg_slim_time = 0.0;
@@ -82,9 +79,10 @@ void Straightener::slimThread() {
 
         _constraintsLock.lock();
         if (_isConstraintsChanged) {
+            LogInfo("Yey");
             VectorXi slim_b;
             MatrixXd slim_bc;
-            _constraintState.slim_constraints(slim_b, slim_bc, _debugOnlyEndAndTets);
+            _deformationConstraints.slim_constraints(slim_b, slim_bc, _debugOnlyEndAndTets);
 
             const double soft_const_p = 1e5;
             const MatrixXd TV_0 = _TV;
@@ -99,24 +97,27 @@ void Straightener::slimThread() {
                 slim_bc,
                 soft_const_p
             );
+
+            _isDeformationConstraintsReady = true;
             _isConstraintsChanged = false;
         }
         _constraintsLock.unlock();
 
-        if (_constraintState.num_constraints() == 0) {
+        if (!_isDeformationConstraintsReady) {
             this_thread::yield();
             continue;
         }
         LogInfo("Iteration: " << iterCount);
         ++iterCount;
+
         igl::slim_solve(sData, 1);
 
         _slimDataMutex.lock();
+
         _slimDataOutput = sData.V_o;
         _slimDataMutex.unlock();
 
         _isOutputMeshDirty = true;
-
 
 
         //auto slim_end_time = chrono::high_resolution_clock::now();
@@ -305,6 +306,7 @@ void Straightener::process() {
 
         size_t maxDim = glm::compMax(_inport.getData()->getDimensions()) + 1;
         
+        _TVOriginal /= maxDim;
         _TV /= maxDim;
 
 
@@ -329,10 +331,11 @@ void Straightener::process() {
 
 
     if (_isOutputMeshDirty) {
-        LogInfo("Update mesh");
+        LogInfo("Update mesh in process");
         std::lock_guard<std::mutex>g(_slimDataMutex);
         _outputSurfaceMesh = createOutputSurfaceMesh(_slimDataOutput);
         _meshOutport.setData(_outputSurfaceMesh);
+        invalidate(InvalidationLevel::InvalidOutput);
         _isOutputMeshDirty = false;
     }
 
@@ -340,7 +343,6 @@ void Straightener::process() {
     _debug.skeletonVertices.setData(_debug.skeletonMesh);
 
     //std::this_thread::sleep_for(std::chrono::milliseconds(1));
-    //invalidate(InvalidationLevel::InvalidOutput);
 }
 
 bool Straightener::isReadyToComputeDiffusion() const {
@@ -392,7 +394,7 @@ void Straightener::diffusionDistances() {
 void Straightener::updateConstraints() {
     std::lock_guard<std::mutex> g(_constraintsLock);
 
-    _constraintState.update_bone_constraints(
+    _deformationConstraints.update_bone_constraints(
         _TV, _TT, _isoValues, { _currentInputParameter->frontVertexId, _currentInputParameter->backVertexId }, _nBones
     );
     _isConstraintsChanged = true;
@@ -413,7 +415,6 @@ std::shared_ptr<BasicMesh> Straightener::createOutputSurfaceMesh(const Eigen::Ma
     size_t maxDim = glm::compMax(_inport.getData()->getDimensions()) + 1;
     for (int i = 0; i < TV.rows(); ++i) {
         glm::vec3 p = glm::vec3(TV(i, 0), TV(i, 1), TV(i, 2));
-
         glm::vec4 c = _isoValues.rows() == 0 ?
             glm::vec4((p * float(maxDim)) / glm::vec3(_inport.getData()->getDimensions()) + glm::vec3(1.f), 1.f) :
             eigenToGLMColor(colors.row(i));
@@ -460,11 +461,19 @@ void Straightener::createDebugMeshes() {
 
 
     _debug.skeletonMesh = meshutil::sphere({ 0.f, 0.f, 0.f }, 0.f, glm::vec4(0.f));
+    LogInfo("nBoneConstraints: " << _deformationConstraints.m_bone_constraints_idx.size());
 
+    for (int i : _deformationConstraints.m_bone_constraints_idx) {
+        glm::vec3 p = eigenToGLM(_TV.row(i));
+        glm::vec4 c(0.f, 0.95f, 0.f, 1.f);
+
+        std::shared_ptr<BasicMesh> m = meshutil::sphere(p, 1.5f * _sphereRadius, c);
+
+        _debug.skeletonMesh->append(m.get());
+    }
 
 
     invalidate(InvalidationLevel::InvalidOutput);
-    //_debugMeshOutput.setData(_debugMesh);
 }
 
 
@@ -508,9 +517,9 @@ void Straightener::eventUpdateMousePos(Event* e) {
     Eigen::Vector4f viewport;
     viewport << 0.f, 0.f, static_cast<float>(viewportSize.x), static_cast<float>(viewportSize.y);
 
-    LogInfo("Viewport: " << viewport);
+    //LogInfo("Viewport: " << viewport);
 
-    LogInfo("Mouse pos: " << pos);
+    //LogInfo("Mouse pos: " << pos);
 
     int fid;
     Eigen::Vector3f bc;
@@ -531,23 +540,14 @@ void Straightener::eventUpdateMousePos(Event* e) {
 
     _meshLock.unlock();
 
-    LogInfo("Current vertex id: " << _currentHoverVertexId);
-
-    switch (_currentSelectionState) {
-        case SelectionState::None: LogInfo("Current state: None"); break;
-        case SelectionState::Front: LogInfo("Current state: Front"); break;
-        case SelectionState::Back: LogInfo("Current state: Back"); break;
-    }
-
-    LogInfo("Current front id: " << _currentInputParameter->frontVertexId);
-    LogInfo("Current back id: " << _currentInputParameter->backVertexId);
+    //LogInfo("Current vertex id: " << _currentHoverVertexId);
 }
 
 void Straightener::eventStartDiffusion() {
     if (isReadyToComputeDiffusion()) {
         diffusionDistances();
-        createDebugMeshes();
         updateConstraints();
+        createDebugMeshes();
     }
 }
 

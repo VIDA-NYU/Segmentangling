@@ -10,7 +10,8 @@
 #include <inviwo/core/ports/meshport.h>
 #include <inviwo/core/datastructures/geometry/simplemesh.h>
 
-#include <modules/segmentangling/util/constraintsstate.h>
+//#include <modules/segmentangling/util/constraintsstate.h>
+#include <deformation_constraints.h>
 #include <inviwo/core/properties/eventproperty.h>
 #include <inviwo/core/properties/cameraproperty.h>
 #include <inviwo/core/ports/imageport.h>
@@ -177,9 +178,10 @@ private:
 
     bool _isSlimRunning;
     std::thread _slimThread;
-    bool _isConstraintsChanged;
+    bool _isConstraintsChanged = false;
     std::mutex _meshLock;
-    ConstraintState _constraintState;
+    DeformationConstraints _deformationConstraints;
+    std::atomic_bool _isDeformationConstraintsReady = false;
     std::mutex _constraintsLock;
 
     

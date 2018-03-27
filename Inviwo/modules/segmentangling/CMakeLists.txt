@@ -10,12 +10,11 @@ set(HEADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/processors/loadcontourtree.h
     ${CMAKE_CURRENT_SOURCE_DIR}/processors/segmentationidraycaster.h
     ${CMAKE_CURRENT_SOURCE_DIR}/processors/straightener.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/processors/tetmesher.h
     ${CMAKE_CURRENT_SOURCE_DIR}/processors/volumecollectiongenerator.h
     ${CMAKE_CURRENT_SOURCE_DIR}/processors/volumeexportgenerator.h
     ${CMAKE_CURRENT_SOURCE_DIR}/processors/volumesliceoverlay.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/util/constraintsstate.h
     ${CMAKE_CURRENT_SOURCE_DIR}/util/defer.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/util/fresh_new_utils.h
 
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../ContourTree/constants.h
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../ContourTree/ContourTreeData.hpp
@@ -40,13 +39,14 @@ set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/processors/loadcontourtree.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/processors/segmentationidraycaster.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/processors/straightener.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/processors/tetmesher.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/processors/volumecollectiongenerator.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/processors/volumeexportgenerator.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/processors/volumesliceoverlay.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/util/constraintsstate.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/util/fresh_new_utils.cpp
 
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../../fish_deformation/src/utils/utils.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../fish_deformation/src/utils/yixin_loader.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../../fish_deformation/src/deformation_constraints.cpp
 
 
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../ContourTree/ContourTree.cpp
@@ -108,6 +108,11 @@ target_include_directories(inviwo-module-segmentangling PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../fish_deformation/src/utils
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../fish_deformation/src/tests
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../fish_deformation/external/libigl/
+)
+target_include_directories(inviwo-module-segmentangling PUBLIC
+    "C:/ab7512/SuiteSparse/include"
+    "C:/ab7512/SuiteSparse/CHOLMOD/include"
+    "C:/ab7512/OpenBLAS-v0.2.19-Win64-int32/include"
 )
 
 # target_link_libraries(inviwo-module-segmentangling PUBLIC igl::core igl::opengl_glfw igl::opengl_glfw_imgui)

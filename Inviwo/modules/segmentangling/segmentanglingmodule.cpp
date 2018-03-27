@@ -1,6 +1,7 @@
 #include <modules/segmentangling/segmentanglingmodule.h>
 
 #include <modules/opengl/shader/shadermanager.h>
+#include <modules/segmentangling/processors/tetmesher.h>
 #include <modules/segmentangling/processors/contourfilter.h>
 #include <modules/segmentangling/processors/datapreprocessor.h>
 #include <modules/segmentangling/processors/loadcontourtree.h>
@@ -23,6 +24,7 @@ SegmentanglingModule::SegmentanglingModule(InviwoApplication* app)
     //registerPort<DataOutport<GLuint>>("bufferOutport");
     //registerPort<DataInport<GLuint>>("bufferInport");
 
+    registerProcessor<TetMesher>();
     registerProcessor<ContourFilter>();
     registerProcessor<DataPreprocessor>();
     registerProcessor<LoadContourTree>();
