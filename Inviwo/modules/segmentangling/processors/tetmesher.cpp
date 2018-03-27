@@ -25,6 +25,95 @@
 #include <igl/components.h>
 #include <igl/writeOFF.h>
 
+#ifdef WIN32
+#include <Windows.h>
+#endif
+
+namespace {
+
+#ifdef WIN32
+
+HANDLE startGtest(const std::string& filename) {
+    STARTUPINFOA si;
+    PROCESS_INFORMATION pi;
+
+    ZeroMemory(&si, sizeof(si));
+    si.cb = sizeof(si);
+    ZeroMemory(&pi, sizeof(pi));
+
+    constexpr const char* gTetApplication = "new_gtet.exe";
+    std::string commandline = "--input " + filename + " --ideal-edge-length 10 --epsilon 10 --is-quiet 1";
+
+    char Commandline[256];
+    sprintf(
+        Commandline,
+        "%s --input %s  --ideal-edge-length 10 --epsilon 10 --is-quiet 1",
+        "new_gtet.exe",
+        filename.c_str()
+    );
+
+
+    BOOL success = CreateProcessA(
+        nullptr,
+        Commandline,
+        nullptr,
+        nullptr,
+        FALSE,
+        0,
+        nullptr,
+        nullptr,
+        &si,
+        &pi
+    );
+
+    if (!success) {
+        DWORD errCode = GetLastError();
+        char *err;
+        if (!FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM,
+            NULL,
+            errCode,
+            MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), // default language
+            (LPTSTR)&err,
+            0,
+            NULL))
+        {
+            return nullptr;
+        }
+
+        static char buffer[1024];
+
+        inviwo::LogCentral::getPtr()->log(
+            "TetMesher", inviwo::LogLevel::Info,
+            inviwo::LogAudience::Developer,
+            __FILE__,
+            __FUNCTION__,
+            __LINE__,
+            "Failed to start process"
+        );
+
+        inviwo::LogCentral::getPtr()->log(
+            "TetMesher", inviwo::LogLevel::Info,
+            inviwo::LogAudience::Developer,
+            __FILE__,
+            __FUNCTION__,
+            __LINE__,
+            std::string(err)
+        );
+
+        LocalFree(err);
+
+        return nullptr;
+    }
+
+    return pi.hProcess;
+}
+#else
+void startGtestAndWait(const std::string& filename) {
+#error("Implement me")
+}
+#endif
+}
+
 namespace inviwo {
 
 TetMesher::TetMesher()
@@ -41,7 +130,62 @@ TetMesher::TetMesher()
     addProperty(_action);
 }
 
-void TetMesher::process() {}
+void TetMesher::process() {
+    while (_hasProcessHandle) {
+#ifdef WIN32
+        DWORD exitCode;
+        BOOL b = GetExitCodeProcess(_processHandle, &exitCode);
+
+        if (!b) {
+            DWORD errCode = GetLastError();
+            char *err;
+            if (!FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM,
+                NULL,
+                errCode,
+                MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), // default language
+                (LPTSTR)&err,
+                0,
+                NULL))
+            {
+                continue;
+            }
+
+            static char buffer[1024];
+
+            inviwo::LogCentral::getPtr()->log(
+                "TetMesher", inviwo::LogLevel::Info,
+                inviwo::LogAudience::Developer,
+                __FILE__,
+                __FUNCTION__,
+                __LINE__,
+                "Failed to get exit code process"
+            );
+
+            inviwo::LogCentral::getPtr()->log(
+                "TetMesher", inviwo::LogLevel::Info,
+                inviwo::LogAudience::Developer,
+                __FILE__,
+                __FUNCTION__,
+                __LINE__,
+                err
+            );
+            continue;
+        }
+
+        if (exitCode == STILL_ACTIVE) {
+            LogInfo("Generating tetrahedral mesh...");
+            std::this_thread::sleep_for(std::chrono::milliseconds(250));
+        }
+        else {
+            LogInfo("Exit code: " << exitCode);
+            break;
+        }
+#else
+#error("Implement me")
+#endif
+    }
+
+}
 
 void TetMesher::action() {
     std::shared_ptr<const Volume> vol = _inport.getData();
@@ -163,6 +307,22 @@ void TetMesher::action() {
 
     std::string outputName = _volumeFilename.get() + ".off";
     igl::writeOFF(outputName, V, newF);
+
+
+    //
+    // gtet
+    //
+
+#ifdef WIN32
+    _processHandle = startGtest(outputName);
+    if (_processHandle) {
+        _hasProcessHandle = true;
+        invalidate(InvalidationLevel::InvalidOutput);
+    }
+#else
+#error("Implement me")
+#endif
+
 }
 
 

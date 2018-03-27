@@ -39,6 +39,13 @@ private:
     
     FileProperty _volumeFilename;
     ButtonProperty _action;
+
+#ifdef WIN32
+    HANDLE _processHandle;
+    std::atomic_bool _hasProcessHandle = false;
+#else
+#error("implement me")
+#endif
 };
 
 } // namespace

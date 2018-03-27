@@ -113,10 +113,49 @@ target_include_directories(inviwo-module-segmentangling PUBLIC
     "C:/ab7512/SuiteSparse/include"
     "C:/ab7512/SuiteSparse/CHOLMOD/include"
     "C:/ab7512/OpenBLAS-v0.2.19-Win64-int32/include"
-)
 
+)Function Name  Total CPU [ms, %]   Self CPU [ms, %]    Module
+ + new_gtet.exe (PID: 19900)    1357968 (100,00%)   1357968 (100,00%)   Multiple modules
+| + ntdll.dll!0x007ffbe20fefc1  1091358 (80,37%)    0 (0,00%)   ntdll.dll
+|| + kernel32.dll!0x007ffbe1e11fe4  1091358 (80,37%)    0 (0,00%)   kernel32.dll
+||| + __scrt_common_main_seh    1079837 (79,52%)    0 (0,00%)   new_gtet.exe
+|||| + main 1032201 (76,01%)    0 (0,00%)   new_gtet.exe
+||||| + gtet_new    1032200 (76,01%)    32 (0,00%)  new_gtet.exe
+|||||| + MeshRefinement::refine 332623 (24,49%) 0 (0,00%)   new_gtet.exe
+||||||| + MeshRefinement::refine_pre    318530 (23,46%) 0 (0,00%)   new_gtet.exe
+|||||||| + MeshRefinement::doOperations 318530 (23,46%) 21 (0,00%)  new_gtet.exe
+||||||||| - EdgeCollapser::collapse 308957 (22,75%) 33030 (2,43%)   new_gtet.exe
+||||||||| - EdgeCollapser::init 9502 (0,70%)    634 (0,05%) new_gtet.exe
+||||||||| - LocalOperations::outputInfo 46 (0,00%)  8 (0,00%)   new_gtet.exe
+||||||||| + MeshRefinement::round   4 (0,00%)   4 (0,00%)   new_gtet.exe
+||||||| - MeshRefinement::doOperations  13184 (0,97%)   26 (0,00%)  new_gtet.exe
+||||||| - geogram.dll!0x007ffb858f793c  235 (0,02%) 0 (0,00%)   geogram.dll
+||||||| - MeshRefinement::refine_post   234 (0,02%) 16 (0,00%)  new_gtet.exe
+||||||| - geogram.dll!0x007ffb858f798a  99 (0,01%)  0 (0,00%)   geogram.dll
+||||||| - LocalOperations::getAvgMaxEnergy  84 (0,01%)  73 (0,01%)  new_gtet.exe
+||||||| - LocalOperations::getMaxEnergy 72 (0,01%)  62 (0,00%)  new_gtet.exe
+||||||| - geogram.dll!0x007ffb858f79b3  52 (0,00%)  0 (0,00%)   geogram.dll
+||||||| - EdgeCollapser::~EdgeCollapser 50 (0,00%)  0 (0,00%)   new_gtet.exe
+||||||| - ucrtbase.dll!0x007ffbdf28e0c6 33 (0,00%)  0 (0,00%)   ucrtbase.dll
+||||||| - MeshRefinement::getSurface    18 (0,00%)  16 (0,00%)  new_gtet.exe
+||||||| - MeshRefinement::updateScalarField 18 (0,00%)  11 (0,00%)  new_gtet.exe
+||||||| - std::vector<int,std::allocator<int> >::_Tidy  5 (0,00%)   0 (0,00%)   new_gtet.exe
+||||||| - geogram.dll!0x007ffb858f7965  4 (0,00%)   0 (0,00%)   geogram.dll
+||||||| - geogram.dll!0x007ffb858f7975  3 (0,00%)   0 (0,00%)   geogram.dll
+||||||| - ucrtbase.dll!0x007ffbdf27cb1b 2 (0,00%)   0 (0,00%)   ucrtbase.dll
+|||||| + SimpleTetrahedralization::tetra    324308 (23,88%) 132 (0,01%) new_gtet.exe
+||||||| - SimpleTetrahedralization::triangulation   310092 (22,84%) 5685 (0,42%)    new_gtet.exe
+||||||| - std::_Hash<std::_Uset_traits<int,std::_Uhash_compare<int,std::hash<int>,std::equal_to<int> >,std::allocator<int>,0> >::_Insert<int const & __ptr64,std::_Not_a_node_tag>  14083 (1,04%)   3174 (0,23%)    new_gtet.exe
+||||||| + @ILT+17365(??$_Insert@AEBHU_Not_a_node_tag@std@@@?$_Hash@V?$_Uset_traits@HV?$_Uhash_compare@HU?$hash@H@std@@U?$equal_to@H@2@@std@@V?$allocator@H@2@$0A@@std@@@std@@IEAA?AU?$pair@V?$_List_const_iterator@V?$_List_val@U?$_List_simple_types@H@std@@@std@@@std@@_N@1@AEBHU_Not_a_node_tag@1@@Z)    1 (0,00%)   1 (0,00%)   new_gtet.exe
+|||||| - MeshConformer::matchDivFaces   107088 (7,89%)  12756 (0,94%)   new_gtet.exe
+|||||| - Preprocess::process    68770 (5,06%)   394 (0,03%) new_gtet.exe
+|||||| - BSPSubdivision::subdivideBSPNodes  66053 (4,86%)   2604 (0,19%)    new_gtet.exe
+|||||| - DelaunayTetrahedralization::tetra  43317 (3,19%)   1294 (0,10%)    new_gtet.exe
+|||||| - SimpleTetrahedralization::labelSurface 28909 (2,13%)   1867 (0,14%)    new_gtet.exe
 # target_link_libraries(inviwo-module-segmentangling PUBLIC igl::core igl::opengl_glfw igl::opengl_glfw_imgui)
 target_link_libraries(inviwo-module-segmentangling PUBLIC igl::core)
+
+
 
 if (WIN32)
   target_link_libraries(inviwo-module-segmentangling PUBLIC
