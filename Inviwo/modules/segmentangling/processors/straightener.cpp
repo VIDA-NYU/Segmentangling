@@ -107,6 +107,8 @@ void Straightener::slimThread() {
             this_thread::yield();
             continue;
         }
+        _stopInteraction = true;
+
         LogInfo("Iteration: " << iterCount);
         ++iterCount;
 
@@ -217,6 +219,8 @@ Straightener::Straightener()
     , _inputParameterSelection("_inputParameterSelection", "Input parameter Selection")
     , _isDebugging("_isDebugging", "Debugging")
     , _diffusionReadyString("_diffusionReadyString", "Diffusion Ready")
+    , _statusString("_statusString", "Status string")
+    , _statusColor("_statusColor", "Status color")
 {
     // Ports
     addPort(_inport);
@@ -271,6 +275,8 @@ Straightener::Straightener()
     addProperty(_selectionStateString);
     addProperty(_inputParameterSelection);
     addProperty(_diffusionReadyString);
+    addProperty(_statusString);
+    addProperty(_statusColor);
 
 
     // Rest of ctor
@@ -283,6 +289,7 @@ Straightener::Straightener()
 
     updateSelectionStateString();
     updateInputParameterString();
+    updateStatusString();
 }
 
 Straightener::~Straightener() {
@@ -299,27 +306,17 @@ void Straightener::process() {
         updateSelectionStateString();
         updateInputParameterString();
         updateDiffusionReadyString();
+        updateStatusString();
 
         _isFirstFrame = false;
     }
 
-
-
-    std::shared_ptr<const Eigen::MatrixXd> v = _trianglesVertexInport.getData();
-    std::shared_ptr<const Eigen::MatrixXi> fOrT = _trianglesTetIndexInport.getData();
-
-    if (!_trianglesVertexInport.isChanged() && !_trianglesTetIndexInport.isChanged()) {
-        return;
-    }
-
-    if (!v || !fOrT) {
-        return;
-    }
-
-    if (fOrT->cols() == 3) {
+    if (_trianglesVertexInport.isChanged() || _trianglesTetIndexInport.isChanged()) {
+        std::shared_ptr<const Eigen::MatrixXd> v = _trianglesVertexInport.getData();
+        std::shared_ptr<const Eigen::MatrixXi> t = _trianglesTetIndexInport.getData();
         // We were passed a surface mesh consisting of triangles
         _surface.TV = *v;
-        _surface.TF = *fOrT;
+        _surface.TF = *t;
 
         size3_t dim = _inport.getData()->getDimensions();
         size_t maxDim = glm::compMax(_inport.getData()->getDimensions()) + 1;
@@ -331,12 +328,19 @@ void Straightener::process() {
         _meshOutport.setData(_outputSurfaceMesh);
 
         _currentMeshType = MeshType::Triangle;
-
     }
-    else if (fOrT->cols() == 4) {
+
+    if (_tetraVertexInport.isChanged() || _tetraTetIndexInport.isChanged()) {
+        std::shared_ptr<const Eigen::MatrixXd> v = _tetraVertexInport.getData();
+        std::shared_ptr<const Eigen::MatrixXi> t = _tetraTetIndexInport.getData();
+
+        if (v->rows() == 0 || t->rows() == 0) {
+            goto cont;
+        }
+
         // We were passed a tetrahedral mesh
         _slim.TVOriginal = *v;
-        _slim.TT = *fOrT;
+        _slim.TT = *t;
 
         std::vector<std::array<int, 4>> tris_sorted;
         std::vector<std::array<int, 4>> tris;
@@ -415,25 +419,16 @@ void Straightener::process() {
         _meshOutport.setData(_outputSurfaceMesh);
         _meshLock.unlock();
 
+        if (_readyToSLIM) {
+            diffusionDistances();
+            updateConstraints();
+        }
     }
-    else {
-        LogInfo("HUHUHUHHH!?");
-    }
 
-    //if (_filenameDirty) {
-        //std::string filename = _filename;
-        //load_yixin_tetmesh(filename, _TVOriginal, _TF, _TT);
+cont:
+    updateStatusString();
 
-
-        _filenameDirty = false;
-
-        
-        //_meshLock.lock();
-        //_outputSurfaceMesh = createOutputSurfaceMesh(_slim.TV);
-        //_meshOutport.setData(_outputSurfaceMesh);
-        //_meshLock.unlock();
-    //}
-
+    _filenameDirty = false;
 
     if (_isOutputMeshDirty) {
         LogInfo("Update mesh in process");
@@ -621,6 +616,12 @@ void Straightener::createDebugMeshes() {
 
 
 void Straightener::eventUpdateMousePos(Event* e) {
+    updateStatusString();
+
+    if (_stopInteraction) {
+        return;
+    }
+
     MouseEvent* mouseEvent = static_cast<MouseEvent*>(e);
 
     glm::dvec2 pos = mouseEvent->pos();
@@ -681,14 +682,30 @@ void Straightener::eventUpdateMousePos(Event* e) {
 }
 
 void Straightener::eventStartDiffusion() {
+    updateStatusString();
+
+    if (_stopInteraction) {
+        return;
+    }
+
+
     if (isReadyToComputeDiffusion()) {
-        diffusionDistances();
-        updateConstraints();
-        createDebugMeshes();
+        if (_currentMeshType == MeshType::Tetra) {
+            diffusionDistances();
+            updateConstraints();
+            createDebugMeshes();
+        }
+        else {
+            _readyToSLIM = true;
+        }
     }
 }
 
 void Straightener::eventSelectPoint() {
+    if (_stopInteraction) {
+        return;
+    }
+
     std::lock_guard<std::mutex> g(_meshLock);
     defer { updateDiffusionReadyString(); };
 
@@ -753,6 +770,9 @@ void Straightener::eventReset() {
 }
 
 void Straightener::eventPreviousParameter() {
+    if (_stopInteraction) {
+        return;
+    }
     defer { updateDiffusionReadyString(); };
 
     LogInfo("Selecting previous input parameter set");
@@ -770,6 +790,9 @@ void Straightener::eventPreviousParameter() {
 }
 
 void Straightener::eventNextParameter() {
+    if (_stopInteraction) {
+        return;
+    }
     LogInfo("Selecting next input parameter set");
 
     ++_currentInputParameter;
@@ -786,6 +809,9 @@ void Straightener::eventNextParameter() {
 }
 
 void Straightener::eventPreviousLevelset() {
+    if (_stopInteraction) {
+        return;
+    }
     LogInfo("Selecting previous levelset");
 
     if (_currentInputParameter->currentLevelset == _currentInputParameter->levelSetOrientations.begin()) {
@@ -799,6 +825,9 @@ void Straightener::eventPreviousLevelset() {
 }
 
 void Straightener::eventNextLevelset() {
+    if (_stopInteraction) {
+        return;
+    }
     LogInfo("Selecting next levelset");
 
     if (_currentInputParameter->currentLevelset + 1 == _currentInputParameter->levelSetOrientations.end()) {
@@ -842,6 +871,28 @@ void Straightener::updateInputParameterString() {
 void Straightener::updateDiffusionReadyString() {
     _diffusionReadyString = isReadyToComputeDiffusion() ? "Ready" : "";
 }
+
+void Straightener::updateStatusString() {
+    if (_currentMeshType == MeshType::Tetra && _readyToSLIM) {
+        _statusString = "Straightening";
+        _statusColor = glm::vec4(0.f, 0.75f, 0.f, 1.f);
+    }
+
+    if (_currentMeshType == MeshType::Tetra && !_readyToSLIM) {
+        _statusString = "Waiting for start (SPACE)";
+        _statusColor = glm::vec4(0.75f, 0.75f, 0.f, 1.f);
+        return;
+    }
+
+    if (_currentMeshType != MeshType::Tetra && _readyToSLIM) {
+        _statusString = "Tetrahedralizing...";
+        _statusColor = glm::vec4(0.75f, 0.75f, 0.f, 1.f);
+        return;
+    }
+
+    _statusString = "";
+}
+
 
 //////////////////////////////////////////////////////////////////////////////////////////
 //                                  Inviiiiiiwo

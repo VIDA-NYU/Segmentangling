@@ -94,6 +94,10 @@ private:
     void updateDiffusionReadyString();
     StringProperty _diffusionReadyString;
 
+    void updateStatusString();
+    StringProperty _statusString;
+    FloatVec4Property _statusColor;
+
 
     //
     // Ports
@@ -220,6 +224,9 @@ private:
     // Across-frames members
     //
     int _currentHoverVertexId;
+    bool _readyToSLIM = false;
+    bool _stopInteraction = false;
+    
 
 
     //

@@ -185,6 +185,9 @@ void TetMesher::action() {
     _triangleVertexOutport.setData(TV);
     _triangleIndexOutport.setData(TT);
 
+    _vertexOutport.setData(std::make_shared<Eigen::MatrixXd>());
+    _tetIndexOutport.setData(std::make_shared<Eigen::MatrixXi>());
+
     getProgressBar().updateProgress(1.f);
 
 
