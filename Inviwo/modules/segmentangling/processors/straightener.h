@@ -98,6 +98,9 @@ private:
     StringProperty _statusString;
     FloatVec4Property _statusColor;
 
+    void updateInstructionsString();
+    StringProperty _instructionsString;
+
 
     //
     // Ports
@@ -135,13 +138,15 @@ private:
     bool _filenameDirty = false;
     ButtonProperty _reload;
 
+    ButtonProperty _loadDataset;
+
     
     // Output 
     IntVec2Property _windowSize;
-    struct {
-        FloatVec3Property normal;
-        FloatVec3Property position;
-    } _levelsetPlane;
+    //struct {
+    //    FloatVec3Property normal;
+    //    FloatVec3Property position;
+    //} _levelsetPlane;
 
 
     // Internal
@@ -200,11 +205,14 @@ private:
 
     } _surface;
 
-    enum class MeshType {
-        Tetra = 0,
-        Triangle
-    };
-    MeshType _currentMeshType;
+    bool hasTetraMesh() const;
+
+    //enum class MeshType {
+    //    None = 0,
+    //    Tetra,
+    //    Triangle
+    //};
+    //MeshType _currentMeshType = MeshType::None;
 
     Eigen::VectorXd _isoValues;
 

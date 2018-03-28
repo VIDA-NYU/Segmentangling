@@ -178,10 +178,11 @@ Straightener::Straightener()
     , _sphereRadius("_sphereRadius", "Sphere Radius", 0.00075f, 0.f, 0.015f)
     , _reload("reload", "Reload")
     , _windowSize("_windowSize", "Window Size")
-    , _levelsetPlane{
-        FloatVec3Property("levelset_normal", "Normal"),
-        FloatVec3Property("levelset_position", "Position"),
-    }
+    , _loadDataset("_loadDataset", "Load Dataset")
+    //, _levelsetPlane{
+    //    FloatVec3Property("levelset_normal", "Normal"),
+    //    FloatVec3Property("levelset_position", "Position"),
+    //}
     , _eventPositionUpdate("_eventPositionUpdate", "Mouse Position Tracker",
         [this](Event* e) { eventUpdateMousePos(e); },
         MouseButton::None, MouseState::Move
@@ -221,6 +222,7 @@ Straightener::Straightener()
     , _diffusionReadyString("_diffusionReadyString", "Diffusion Ready")
     , _statusString("_statusString", "Status string")
     , _statusColor("_statusColor", "Status color")
+    , _instructionsString("_instructionsString", "Instructions string")
 {
     // Ports
     addPort(_inport);
@@ -235,9 +237,11 @@ Straightener::Straightener()
     addPort(_debug.isoValues);
     addPort(_debug.skeletonVertices);
 
-    // Useful properties
-    addProperty(_levelsetPlane.normal);
-    addProperty(_levelsetPlane.position);
+    //// Useful properties
+    //addProperty(_levelsetPlane.normal);
+    //addProperty(_levelsetPlane.position);
+
+    addProperty(_loadDataset);
 
     // Internal properties
     _windowSize.setReadOnly(true);
@@ -277,6 +281,7 @@ Straightener::Straightener()
     addProperty(_diffusionReadyString);
     addProperty(_statusString);
     addProperty(_statusColor);
+    addProperty(_instructionsString);
 
 
     // Rest of ctor
@@ -311,121 +316,124 @@ void Straightener::process() {
         _isFirstFrame = false;
     }
 
+    updateInstructionsString();
+
     if (_trianglesVertexInport.isChanged() || _trianglesTetIndexInport.isChanged()) {
         std::shared_ptr<const Eigen::MatrixXd> v = _trianglesVertexInport.getData();
         std::shared_ptr<const Eigen::MatrixXi> t = _trianglesTetIndexInport.getData();
-        // We were passed a surface mesh consisting of triangles
-        _surface.TV = *v;
-        _surface.TF = *t;
 
-        size3_t dim = _inport.getData()->getDimensions();
-        size_t maxDim = glm::compMax(_inport.getData()->getDimensions()) + 1;
-        _surface.TV /= maxDim;
+        if (v->rows() > 0 && t->rows() > 0) {
+            // We were passed a surface mesh consisting of triangles
+            _surface.TV = *v;
+            _surface.TF = *t;
 
-        igl::per_vertex_normals(_surface.TV, _surface.TF, _surface.TFn);
+            size3_t dim = _inport.getData()->getDimensions();
+            size_t maxDim = glm::compMax(_inport.getData()->getDimensions()) + 1;
+            _surface.TV /= maxDim;
 
-        _outputSurfaceMesh = createMeshFromTriangles();
-        _meshOutport.setData(_outputSurfaceMesh);
+            igl::per_vertex_normals(_surface.TV, _surface.TF, _surface.TFn);
 
-        _currentMeshType = MeshType::Triangle;
+            _outputSurfaceMesh = createMeshFromTriangles();
+            _meshOutport.setData(_outputSurfaceMesh);
+
+            //_currentMeshType = MeshType::Triangle;
+        }
     }
 
     if (_tetraVertexInport.isChanged() || _tetraTetIndexInport.isChanged()) {
         std::shared_ptr<const Eigen::MatrixXd> v = _tetraVertexInport.getData();
         std::shared_ptr<const Eigen::MatrixXi> t = _tetraTetIndexInport.getData();
 
-        if (v->rows() == 0 || t->rows() == 0) {
-            goto cont;
-        }
+        if (v->rows() > 0 || t->rows() > 0) {
 
-        // We were passed a tetrahedral mesh
-        _slim.TVOriginal = *v;
-        _slim.TT = *t;
+            // We were passed a tetrahedral mesh
+            _slim.TVOriginal = *v;
+            _slim.TT = *t;
 
-        std::vector<std::array<int, 4>> tris_sorted;
-        std::vector<std::array<int, 4>> tris;
+            std::vector<std::array<int, 4>> tris_sorted;
+            std::vector<std::array<int, 4>> tris;
 
-        int tcount = 0;
-        for (int i = 0; i < _slim.TT.rows(); i += 1) {
-            const int e1 = _slim.TT(i, 0);
-            const int e2 = _slim.TT(i, 1);
-            const int e3 = _slim.TT(i, 2);
-            const int e4 = _slim.TT(i, 3);
-            std::array<int, 4> t1, t2, t3, t4;
-            t1 = std::array<int, 4>{ { e1, e2, e3, INT_MAX }};
-            t2 = std::array<int, 4>{ { e1, e3, e4, INT_MAX }};
-            t3 = std::array<int, 4>{ { e2, e4, e3, INT_MAX }};
-            t4 = std::array<int, 4>{ { e1, e4, e2, INT_MAX }};
-            tris.push_back(t1);
-            tris.push_back(t2);
-            tris.push_back(t3);
-            tris.push_back(t4);
-            t1[3] = tris_sorted.size();
-            t2[3] = tris_sorted.size() + 1;
-            t3[3] = tris_sorted.size() + 2;
-            t4[3] = tris_sorted.size() + 3;
-            sort(t1.begin(), t1.end());
-            sort(t2.begin(), t2.end());
-            sort(t3.begin(), t3.end());
-            sort(t4.begin(), t4.end());
-            tris_sorted.push_back(t1);
-            tris_sorted.push_back(t2);
-            tris_sorted.push_back(t3);
-            tris_sorted.push_back(t4);
+            int tcount = 0;
+            for (int i = 0; i < _slim.TT.rows(); i += 1) {
+                const int e1 = _slim.TT(i, 0);
+                const int e2 = _slim.TT(i, 1);
+                const int e3 = _slim.TT(i, 2);
+                const int e4 = _slim.TT(i, 3);
+                std::array<int, 4> t1, t2, t3, t4;
+                t1 = std::array<int, 4>{ { e1, e2, e3, INT_MAX }};
+                t2 = std::array<int, 4>{ { e1, e3, e4, INT_MAX }};
+                t3 = std::array<int, 4>{ { e2, e4, e3, INT_MAX }};
+                t4 = std::array<int, 4>{ { e1, e4, e2, INT_MAX }};
+                tris.push_back(t1);
+                tris.push_back(t2);
+                tris.push_back(t3);
+                tris.push_back(t4);
+                t1[3] = tris_sorted.size();
+                t2[3] = tris_sorted.size() + 1;
+                t3[3] = tris_sorted.size() + 2;
+                t4[3] = tris_sorted.size() + 3;
+                sort(t1.begin(), t1.end());
+                sort(t2.begin(), t2.end());
+                sort(t3.begin(), t3.end());
+                sort(t4.begin(), t4.end());
+                tris_sorted.push_back(t1);
+                tris_sorted.push_back(t2);
+                tris_sorted.push_back(t3);
+                tris_sorted.push_back(t4);
 
 
-            int fcount = 0;
-            _slim.TF.resize(tris_sorted.size(), 3);
-            sort(tris_sorted.begin(), tris_sorted.end());
-            for (int i = 0; i < _slim.TF.rows();) {
-                int v1 = tris_sorted[i][0], v2 = tris_sorted[i][1], v3 = tris_sorted[i][2];
-                int tid = tris_sorted[i][3];
-                int count = 0;
-                while (i < _slim.TF.rows() && v1 == tris_sorted[i][0] && v2 == tris_sorted[i][1] && v3 == tris_sorted[i][2]) {
-                    i += 1;
-                    count += 1;
+                int fcount = 0;
+                _slim.TF.resize(tris_sorted.size(), 3);
+                sort(tris_sorted.begin(), tris_sorted.end());
+                for (int i = 0; i < _slim.TF.rows();) {
+                    int v1 = tris_sorted[i][0], v2 = tris_sorted[i][1], v3 = tris_sorted[i][2];
+                    int tid = tris_sorted[i][3];
+                    int count = 0;
+                    while (i < _slim.TF.rows() && v1 == tris_sorted[i][0] && v2 == tris_sorted[i][1] && v3 == tris_sorted[i][2]) {
+                        i += 1;
+                        count += 1;
+                    }
+                    if (count == 1) {
+                        _slim.TF.row(fcount++) = Eigen::RowVector3i(tris[tid][0], tris[tid][1], tris[tid][2]);
+                    }
                 }
-                if (count == 1) {
-                    _slim.TF.row(fcount++) = Eigen::RowVector3i(tris[tid][0], tris[tid][1], tris[tid][2]);
-                }
+
+                _slim.TF.conservativeResize(fcount, 3);
+                //_currentMeshType = MeshType::Tetra;
             }
 
-            _slim.TF.conservativeResize(fcount, 3);
-            _currentMeshType = MeshType::Tetra;
-        }
+            _slim.TV = _slim.TVOriginal;
+            //edge_endpoints(TV, TT, TEV1, TEV2);
 
-        _slim.TV = _slim.TVOriginal;
-        //edge_endpoints(TV, TT, TEV1, TEV2);
+            size3_t dim = _inport.getData()->getDimensions();
+            size_t maxDim = glm::compMax(_inport.getData()->getDimensions()) + 1;
 
-        size3_t dim = _inport.getData()->getDimensions();
-        size_t maxDim = glm::compMax(_inport.getData()->getDimensions()) + 1;
-        
-        _slim.TVOriginal /= maxDim;
-        _slim.TV /= maxDim;
+            _slim.TVOriginal /= maxDim;
+            _slim.TV /= maxDim;
 
 
-        _slim.texCoords = _slim.TV - Eigen::MatrixXd::Ones(_slim.TV.rows(), _slim.TV.cols());
+            _slim.texCoords = _slim.TV - Eigen::MatrixXd::Ones(_slim.TV.rows(), _slim.TV.cols());
 
-        igl::per_vertex_normals(_slim.TV, _slim.TF, _slim.TFn);
+            igl::per_vertex_normals(_slim.TV, _slim.TF, _slim.TFn);
 
-        //_texCoords.resize(_TV.rows(), 3);
-        //for (int i = 0; i < _TV.rows(); i++) {
-        //    // Subtract 1 since we pad the grid with a zero cell all around
-        //    _texCoords.row(i) = _TV.row(i) - f.m_bb_min - Eigen::RowVector3d::Ones();
-        //}
-    
-        _meshLock.lock();
-        _outputSurfaceMesh = createOutputSurfaceMesh(_slim.TV);
-        _meshOutport.setData(_outputSurfaceMesh);
-        _meshLock.unlock();
+            //_texCoords.resize(_TV.rows(), 3);
+            //for (int i = 0; i < _TV.rows(); i++) {
+            //    // Subtract 1 since we pad the grid with a zero cell all around
+            //    _texCoords.row(i) = _TV.row(i) - f.m_bb_min - Eigen::RowVector3d::Ones();
+            //}
 
-        if (_readyToSLIM) {
-            diffusionDistances();
-            updateConstraints();
+            _meshLock.lock();
+            _outputSurfaceMesh = createOutputSurfaceMesh(_slim.TV);
+            _meshOutport.setData(_outputSurfaceMesh);
+            _meshLock.unlock();
+
+            if (_readyToSLIM) {
+                diffusionDistances();
+                updateConstraints();
+            }
         }
     }
 
-cont:
     updateStatusString();
 
     _filenameDirty = false;
@@ -495,7 +503,11 @@ void Straightener::updateConstraints() {
     std::lock_guard<std::mutex> g(_constraintsLock);
 
     _deformationConstraints.update_bone_constraints(
-        _slim.TV, _slim.TT, _isoValues, { _currentInputParameter->frontVertexId, _currentInputParameter->backVertexId }, _nBones
+        _slim.TV,
+        _slim.TT,
+        _isoValues,
+        { { _currentInputParameter->frontVertexId, _currentInputParameter->backVertexId } },
+        _nBones
     );
     _isConstraintsChanged = true;
 }
@@ -690,7 +702,7 @@ void Straightener::eventStartDiffusion() {
 
 
     if (isReadyToComputeDiffusion()) {
-        if (_currentMeshType == MeshType::Tetra) {
+        if (hasTetraMesh()) {
             diffusionDistances();
             updateConstraints();
             createDebugMeshes();
@@ -766,7 +778,7 @@ void Straightener::eventReset() {
     _backSelectionMesh.setData(nullptr);
 
     _isoValues.resize(0, 0);
-    _currentMeshType == MeshType::Tetra ? createOutputSurfaceMesh(_slim.TV) : createMeshFromTriangles();
+    hasTetraMesh() ? createOutputSurfaceMesh(_slim.TV) : createMeshFromTriangles();
 }
 
 void Straightener::eventPreviousParameter() {
@@ -841,11 +853,15 @@ void Straightener::eventNextLevelset() {
 }
 
 const Eigen::MatrixXd& Straightener::currentTV() const {
-    return _currentMeshType == MeshType::Tetra ? _slim.TV : _surface.TV;
+    return hasTetraMesh() ? _slim.TV : _surface.TV;
 }
 
 const Eigen::MatrixXi& Straightener::currentTF() const {
-    return _currentMeshType == MeshType::Tetra ? _slim.TF : _surface.TF;
+    return hasTetraMesh() ? _slim.TF : _surface.TF;
+}
+
+bool Straightener::hasTetraMesh() const {
+    return _slim.TVOriginal.rows() > 0;
 }
 
 
@@ -873,24 +889,39 @@ void Straightener::updateDiffusionReadyString() {
 }
 
 void Straightener::updateStatusString() {
-    if (_currentMeshType == MeshType::Tetra && _readyToSLIM) {
+    if (hasTetraMesh() && _readyToSLIM) {
         _statusString = "Straightening";
         _statusColor = glm::vec4(0.f, 0.75f, 0.f, 1.f);
     }
 
-    if (_currentMeshType == MeshType::Tetra && !_readyToSLIM) {
+    if (hasTetraMesh() && !_readyToSLIM) {
         _statusString = "Waiting for start (SPACE)";
         _statusColor = glm::vec4(0.75f, 0.75f, 0.f, 1.f);
         return;
     }
 
-    if (_currentMeshType != MeshType::Tetra && _readyToSLIM) {
+    if (!hasTetraMesh() && _readyToSLIM) {
         _statusString = "Tetrahedralizing...";
         _statusColor = glm::vec4(0.75f, 0.75f, 0.f, 1.f);
         return;
     }
 
     _statusString = "";
+}
+
+void Straightener::updateInstructionsString() {
+    bool b =
+        (_trianglesVertexInport.getData()->rows() == 0) &&
+        (_trianglesTetIndexInport.getData()->rows() == 0) &&
+        (_tetraVertexInport.getData()->rows() == 0) &&
+        (_tetraTetIndexInport.getData()->rows() == 0);
+
+    if (b) {
+        _instructionsString = "Press 'Load Dataset' to start";
+    }
+    else {
+        _instructionsString = "";
+    }
 }
 
 

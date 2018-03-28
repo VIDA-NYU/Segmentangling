@@ -53,7 +53,16 @@ TetMesher::TetMesher()
     addProperty(_action);
 }
 
-void TetMesher::process() {}
+void TetMesher::process() {
+    if (_isFirstFrame) {
+        _triangleVertexOutport.setData(std::make_shared<Eigen::MatrixXd>());
+        _triangleIndexOutport.setData(std::make_shared<Eigen::MatrixXi>());
+        _vertexOutport.setData(std::make_shared<Eigen::MatrixXd>());
+        _tetIndexOutport.setData(std::make_shared<Eigen::MatrixXi>());
+
+        _isFirstFrame = false;
+    }
+}
 
 void TetMesher::action() {
     std::shared_ptr<const Volume> vol = _inport.getData();

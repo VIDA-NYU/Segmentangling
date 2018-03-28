@@ -46,6 +46,8 @@ private:
 
     //FileProperty _volumeFilename;
     ButtonProperty _action;
+
+    bool _isFirstFrame = true;
 };
 
 } // namespace
