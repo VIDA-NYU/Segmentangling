@@ -85,11 +85,11 @@ void Straightener::slimThread() {
             _deformationConstraints.slim_constraints(slim_b, slim_bc, _debugOnlyEndAndTets);
 
             const double soft_const_p = 1e5;
-            const MatrixXd TV_0 = _TV;
+            const MatrixXd TV_0 = _slim.TV;
             sData.exp_factor = 5.0;
             slim_precompute(
-                _TVOriginal,
-                _TT,
+                _slim.TVOriginal,
+                _slim.TT,
                 TV_0,
                 sData,
                 igl::SLIMData::EXP_CONFORMAL,
@@ -153,6 +153,10 @@ const ProcessorInfo Straightener::processorInfo_{
 Straightener::Straightener()
     : Processor()
     , _inport("volumeInport")
+    , _trianglesVertexInport("_trianglesVertexInport")
+    , _trianglesTetIndexInport("_trianglesTetIndexInport")
+    , _tetraVertexInport("_tetraVertexInport")
+    , _tetraTetIndexInport("_tetraTetIndexInport")
     , _meshOutport("meshOutport")
     //, _imageOutport("imageOutput")
     , _frontSelectionMesh("frontSelectionMesh")
@@ -216,6 +220,10 @@ Straightener::Straightener()
 {
     // Ports
     addPort(_inport);
+    addPort(_trianglesVertexInport);
+    addPort(_trianglesTetIndexInport);
+    addPort(_tetraVertexInport);
+    addPort(_tetraTetIndexInport);
     addPort(_meshOutport);
     //addPort(_imageOutport);
     addPort(_frontSelectionMesh);
@@ -295,39 +303,136 @@ void Straightener::process() {
         _isFirstFrame = false;
     }
 
-    if (_filenameDirty) {
-        std::string filename = _filename;
-        load_yixin_tetmesh(filename, _TVOriginal, _TF, _TT);
-        _TV = _TVOriginal;
+
+
+    std::shared_ptr<const Eigen::MatrixXd> v = _trianglesVertexInport.getData();
+    std::shared_ptr<const Eigen::MatrixXi> fOrT = _trianglesTetIndexInport.getData();
+
+    if (!_trianglesVertexInport.isChanged() && !_trianglesTetIndexInport.isChanged()) {
+        return;
+    }
+
+    if (!v || !fOrT) {
+        return;
+    }
+
+    if (fOrT->cols() == 3) {
+        // We were passed a surface mesh consisting of triangles
+        _surface.TV = *v;
+        _surface.TF = *fOrT;
+
+        size3_t dim = _inport.getData()->getDimensions();
+        size_t maxDim = glm::compMax(_inport.getData()->getDimensions()) + 1;
+        _surface.TV /= maxDim;
+
+        igl::per_vertex_normals(_surface.TV, _surface.TF, _surface.TFn);
+
+        _outputSurfaceMesh = createMeshFromTriangles();
+        _meshOutport.setData(_outputSurfaceMesh);
+
+        _currentMeshType = MeshType::Triangle;
+
+    }
+    else if (fOrT->cols() == 4) {
+        // We were passed a tetrahedral mesh
+        _slim.TVOriginal = *v;
+        _slim.TT = *fOrT;
+
+        std::vector<std::array<int, 4>> tris_sorted;
+        std::vector<std::array<int, 4>> tris;
+
+        int tcount = 0;
+        for (int i = 0; i < _slim.TT.rows(); i += 1) {
+            const int e1 = _slim.TT(i, 0);
+            const int e2 = _slim.TT(i, 1);
+            const int e3 = _slim.TT(i, 2);
+            const int e4 = _slim.TT(i, 3);
+            std::array<int, 4> t1, t2, t3, t4;
+            t1 = std::array<int, 4>{ { e1, e2, e3, INT_MAX }};
+            t2 = std::array<int, 4>{ { e1, e3, e4, INT_MAX }};
+            t3 = std::array<int, 4>{ { e2, e4, e3, INT_MAX }};
+            t4 = std::array<int, 4>{ { e1, e4, e2, INT_MAX }};
+            tris.push_back(t1);
+            tris.push_back(t2);
+            tris.push_back(t3);
+            tris.push_back(t4);
+            t1[3] = tris_sorted.size();
+            t2[3] = tris_sorted.size() + 1;
+            t3[3] = tris_sorted.size() + 2;
+            t4[3] = tris_sorted.size() + 3;
+            sort(t1.begin(), t1.end());
+            sort(t2.begin(), t2.end());
+            sort(t3.begin(), t3.end());
+            sort(t4.begin(), t4.end());
+            tris_sorted.push_back(t1);
+            tris_sorted.push_back(t2);
+            tris_sorted.push_back(t3);
+            tris_sorted.push_back(t4);
+
+
+            int fcount = 0;
+            _slim.TF.resize(tris_sorted.size(), 3);
+            sort(tris_sorted.begin(), tris_sorted.end());
+            for (int i = 0; i < _slim.TF.rows();) {
+                int v1 = tris_sorted[i][0], v2 = tris_sorted[i][1], v3 = tris_sorted[i][2];
+                int tid = tris_sorted[i][3];
+                int count = 0;
+                while (i < _slim.TF.rows() && v1 == tris_sorted[i][0] && v2 == tris_sorted[i][1] && v3 == tris_sorted[i][2]) {
+                    i += 1;
+                    count += 1;
+                }
+                if (count == 1) {
+                    _slim.TF.row(fcount++) = Eigen::RowVector3i(tris[tid][0], tris[tid][1], tris[tid][2]);
+                }
+            }
+
+            _slim.TF.conservativeResize(fcount, 3);
+            _currentMeshType = MeshType::Tetra;
+        }
+
+        _slim.TV = _slim.TVOriginal;
         //edge_endpoints(TV, TT, TEV1, TEV2);
 
         size3_t dim = _inport.getData()->getDimensions();
-
-
         size_t maxDim = glm::compMax(_inport.getData()->getDimensions()) + 1;
         
-        _TVOriginal /= maxDim;
-        _TV /= maxDim;
+        _slim.TVOriginal /= maxDim;
+        _slim.TV /= maxDim;
 
 
-        _texCoords = _TV - Eigen::MatrixXd::Ones(_TV.rows(), _TV.cols());
+        _slim.texCoords = _slim.TV - Eigen::MatrixXd::Ones(_slim.TV.rows(), _slim.TV.cols());
 
-        igl::per_vertex_normals(_TV, _TF, _TFn); 
+        igl::per_vertex_normals(_slim.TV, _slim.TF, _slim.TFn);
 
         //_texCoords.resize(_TV.rows(), 3);
         //for (int i = 0; i < _TV.rows(); i++) {
         //    // Subtract 1 since we pad the grid with a zero cell all around
         //    _texCoords.row(i) = _TV.row(i) - f.m_bb_min - Eigen::RowVector3d::Ones();
         //}
+    
+        _meshLock.lock();
+        _outputSurfaceMesh = createOutputSurfaceMesh(_slim.TV);
+        _meshOutport.setData(_outputSurfaceMesh);
+        _meshLock.unlock();
+
+    }
+    else {
+        LogInfo("HUHUHUHHH!?");
+    }
+
+    //if (_filenameDirty) {
+        //std::string filename = _filename;
+        //load_yixin_tetmesh(filename, _TVOriginal, _TF, _TT);
+
 
         _filenameDirty = false;
 
         
-        _meshLock.lock();
-        _outputSurfaceMesh = createOutputSurfaceMesh(_TV);
-        _meshOutport.setData(_outputSurfaceMesh);
-        _meshLock.unlock();
-    }
+        //_meshLock.lock();
+        //_outputSurfaceMesh = createOutputSurfaceMesh(_slim.TV);
+        //_meshOutport.setData(_outputSurfaceMesh);
+        //_meshLock.unlock();
+    //}
 
 
     if (_isOutputMeshDirty) {
@@ -364,7 +469,7 @@ void Straightener::diffusionDistances() {
 
     // Discrete Gradient operator
     SparseMatrixXd G;
-    igl::grad(_TV, _TT, G);
+    igl::grad(_slim.TV, _slim.TT, G);
 
     SimplicialLDLT<SparseMatrixXd> solver;
 
@@ -378,12 +483,12 @@ void Straightener::diffusionDistances() {
     constraint_values(0, 0) = 1.0;
     constraint_values(1, 0) = 0.0;
 
-    igl::harmonic(_TV, _TT, constraint_indices,
+    igl::harmonic(_slim.TV, _slim.TT, constraint_indices,
         constraint_values, 1, _isoValues);
 
     scale_zero_one(_isoValues);
     VectorXd g = G * _isoValues;
-    Map<MatrixXd> V(g.data(), _TT.rows(), 3);
+    Map<MatrixXd> V(g.data(), _slim.TT.rows(), 3);
     V.rowwise().normalize();
 
     solver.compute(G.transpose()*G);
@@ -395,7 +500,7 @@ void Straightener::updateConstraints() {
     std::lock_guard<std::mutex> g(_constraintsLock);
 
     _deformationConstraints.update_bone_constraints(
-        _TV, _TT, _isoValues, { _currentInputParameter->frontVertexId, _currentInputParameter->backVertexId }, _nBones
+        _slim.TV, _slim.TT, _isoValues, { _currentInputParameter->frontVertexId, _currentInputParameter->backVertexId }, _nBones
     );
     _isConstraintsChanged = true;
 }
@@ -422,22 +527,54 @@ std::shared_ptr<BasicMesh> Straightener::createOutputSurfaceMesh(const Eigen::Ma
 
         mesh->addVertex(
             p, // pos
-            glm::vec3(_TFn(i, 0), _TFn(i, 1), _TFn(i, 2)), // normal
+            glm::vec3(_slim.TFn(i, 0), _slim.TFn(i, 1), _slim.TFn(i, 2)), // normal
             glm::vec3(0.f), // texCoord
             c // color
         );
     }
 
-    for (int i = 0; i < _TF.rows(); ++i) {
+    for (int i = 0; i < _slim.TF.rows(); ++i) {
         indices->add({
-            static_cast<unsigned int>(_TF(i, 0)),
-            static_cast<unsigned int>(_TF(i, 1)),
-            static_cast<unsigned int>(_TF(i, 2))
+            static_cast<unsigned int>(_slim.TF(i, 0)),
+            static_cast<unsigned int>(_slim.TF(i, 1)),
+            static_cast<unsigned int>(_slim.TF(i, 2))
         });
     }
 
     return mesh;
 }
+
+std::shared_ptr<BasicMesh> Straightener::createMeshFromTriangles() {
+    std::shared_ptr<BasicMesh> mesh = std::make_shared<BasicMesh>();
+    mesh->setModelMatrix(mat4());
+    auto indices = mesh->addIndexBuffer(DrawType::Triangles, ConnectivityType::None);
+
+    size_t maxDim = glm::compMax(_inport.getData()->getDimensions()) + 1;
+
+    for (int i = 0; i < _surface.TV.rows(); ++i) {
+        glm::vec3 p = glm::vec3(_surface.TV(i, 0), _surface.TV(i, 1), _surface.TV(i, 2));
+        glm::vec4 c = glm::vec4((p * float(maxDim)) / glm::vec3(_inport.getData()->getDimensions()) + glm::vec3(1.f), 1.f);
+        //glm::vec4(colors(i, 0), colors(i, 1), colors(i, 2), 1.f);
+
+        mesh->addVertex(
+            p, // pos
+            glm::vec3(_surface.TFn(i, 0), _surface.TFn(i, 1), _surface.TFn(i, 2)), // normal
+            glm::vec3(0.f), // texCoord
+            c // color
+        );
+    }
+
+    for (int i = 0; i < _surface.TF.rows(); ++i) {
+        indices->add({
+            static_cast<unsigned int>(_surface.TF(i, 0)),
+            static_cast<unsigned int>(_surface.TF(i, 1)),
+            static_cast<unsigned int>(_surface.TF(i, 2))
+        });
+    }
+
+    return mesh;
+}
+
 
 void Straightener::createDebugMeshes() {
     _debug.isoMesh = meshutil::sphere({ 0.f, 0.f, 0.f }, 0.f, glm::vec4(0.f));
@@ -449,8 +586,8 @@ void Straightener::createDebugMeshes() {
     }
 
 
-    for (int i = 0; i < _TV.rows(); ++i) {
-        glm::vec3 p = eigenToGLM(_TV.row(i));
+    for (int i = 0; i < _slim.TV.rows(); ++i) {
+        glm::vec3 p = eigenToGLM(_slim.TV.row(i));
         glm::vec4 c = _isoValues.rows() == 0 ? glm::vec4(1.f) : eigenToGLMColor(colors.row(i));
         //glm::vec4(colors(i, 0), colors(i, 1), colors(i, 2), 1.f);
 
@@ -464,7 +601,7 @@ void Straightener::createDebugMeshes() {
     LogInfo("nBoneConstraints: " << _deformationConstraints.m_bone_constraints_idx.size());
 
     for (int i : _deformationConstraints.m_bone_constraints_idx) {
-        glm::vec3 p = eigenToGLM(_TV.row(i));
+        glm::vec3 p = eigenToGLM(_slim.TV.row(i));
         glm::vec4 c(0.f, 0.95f, 0.f, 1.f);
 
         std::shared_ptr<BasicMesh> m = meshutil::sphere(p, 1.5f * _sphereRadius, c);
@@ -531,11 +668,11 @@ void Straightener::eventUpdateMousePos(Event* e) {
     if (igl::unproject_onto_mesh(Eigen::Vector2f(pos.x, pos.y),
         modelView, projMatrix,
         viewport,
-        _TV, _TF, fid, bc))
+        currentTV(), currentTF(), fid, bc))
     {
         int max;
         bc.maxCoeff(&max);
-        _currentHoverVertexId = _TF(fid, max);
+        _currentHoverVertexId = currentTF()(fid, max);
     }
 
     _meshLock.unlock();
@@ -570,9 +707,9 @@ void Straightener::eventSelectPoint() {
             LogInfo("Selected front: " << _currentInputParameter->frontVertexId);
 
             glm::vec3 p = glm::vec3(
-                _TV(_currentInputParameter->frontVertexId, 0),
-                _TV(_currentInputParameter->frontVertexId, 1),
-                _TV(_currentInputParameter->frontVertexId, 2)
+                currentTV()(_currentInputParameter->frontVertexId, 0),
+                currentTV()(_currentInputParameter->frontVertexId, 1),
+                currentTV()(_currentInputParameter->frontVertexId, 2)
             );
             std::shared_ptr<BasicMesh> mesh = meshutil::sphere(p, 0.015f, glm::vec4(0.f, 0.75f, 0.f, 1.f));
 
@@ -587,9 +724,9 @@ void Straightener::eventSelectPoint() {
             LogInfo("Selected back: " << _currentInputParameter->backVertexId);
 
             glm::vec3 p = glm::vec3(
-                _TV(_currentInputParameter->backVertexId, 0),
-                _TV(_currentInputParameter->backVertexId, 1),
-                _TV(_currentInputParameter->backVertexId, 2)
+                currentTV()(_currentInputParameter->backVertexId, 0),
+                currentTV()(_currentInputParameter->backVertexId, 1),
+                currentTV()(_currentInputParameter->backVertexId, 2)
             );
             std::shared_ptr<BasicMesh> mesh = meshutil::sphere(p, 0.015f, glm::vec4(0.75f, 0.f, 0.f, 1.f));
             _backSelectionMesh.setData(mesh);
@@ -612,7 +749,7 @@ void Straightener::eventReset() {
     _backSelectionMesh.setData(nullptr);
 
     _isoValues.resize(0, 0);
-    createOutputSurfaceMesh(_TV);
+    _currentMeshType == MeshType::Tetra ? createOutputSurfaceMesh(_slim.TV) : createMeshFromTriangles();
 }
 
 void Straightener::eventPreviousParameter() {
@@ -672,6 +809,14 @@ void Straightener::eventNextLevelset() {
     ++(_currentInputParameter->currentLevelset);
 
     updateDiffusionReadyString();
+}
+
+const Eigen::MatrixXd& Straightener::currentTV() const {
+    return _currentMeshType == MeshType::Tetra ? _slim.TV : _surface.TV;
+}
+
+const Eigen::MatrixXi& Straightener::currentTF() const {
+    return _currentMeshType == MeshType::Tetra ? _slim.TF : _surface.TF;
 }
 
 

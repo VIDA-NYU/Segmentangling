@@ -25,170 +25,40 @@
 #include <igl/components.h>
 #include <igl/writeOFF.h>
 
-#ifdef WIN32
-#include <Windows.h>
-#endif
-
-namespace {
-
-#ifdef WIN32
-
-HANDLE startGtest(const std::string& filename) {
-    STARTUPINFOA si;
-    PROCESS_INFORMATION pi;
-
-    ZeroMemory(&si, sizeof(si));
-    si.cb = sizeof(si);
-    ZeroMemory(&pi, sizeof(pi));
-
-    constexpr const char* gTetApplication = "new_gtet.exe";
-    std::string commandline = "--input " + filename + " --ideal-edge-length 10 --epsilon 10 --is-quiet 1";
-
-    char Commandline[256];
-    sprintf(
-        Commandline,
-        "%s --input %s  --ideal-edge-length 10 --epsilon 10 --is-quiet 1",
-        "new_gtet.exe",
-        filename.c_str()
-    );
-
-
-    BOOL success = CreateProcessA(
-        nullptr,
-        Commandline,
-        nullptr,
-        nullptr,
-        FALSE,
-        0,
-        nullptr,
-        nullptr,
-        &si,
-        &pi
-    );
-
-    if (!success) {
-        DWORD errCode = GetLastError();
-        char *err;
-        if (!FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM,
-            NULL,
-            errCode,
-            MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), // default language
-            (LPTSTR)&err,
-            0,
-            NULL))
-        {
-            return nullptr;
-        }
-
-        static char buffer[1024];
-
-        inviwo::LogCentral::getPtr()->log(
-            "TetMesher", inviwo::LogLevel::Info,
-            inviwo::LogAudience::Developer,
-            __FILE__,
-            __FUNCTION__,
-            __LINE__,
-            "Failed to start process"
-        );
-
-        inviwo::LogCentral::getPtr()->log(
-            "TetMesher", inviwo::LogLevel::Info,
-            inviwo::LogAudience::Developer,
-            __FILE__,
-            __FUNCTION__,
-            __LINE__,
-            std::string(err)
-        );
-
-        LocalFree(err);
-
-        return nullptr;
-    }
-
-    return pi.hProcess;
-}
-#else
-void startGtestAndWait(const std::string& filename) {
-#error("Implement me")
-}
-#endif
-}
+#include <TetWild.h>
 
 namespace inviwo {
 
 TetMesher::TetMesher()
     : Processor()
     , _inport("volumeInport")
-    , _volumeFilename("_volumeFilename", "Volume Filename")
-    , _action("_action", "Create volume")
+    , _triangleVertexOutport("_triangleVertexOutport")
+    , _triangleIndexOutport("_triangleIndexOutport")
+    , _vertexOutport("_vertexOutport")
+    , _tetIndexOutport("_tetIndexOutport")
+    //, _volumeFilename("_volumeFilename", "Volume Filename")
+    , _action("_action", "Go")
 {
     addPort(_inport);
+    addPort(_triangleVertexOutport);
+    addPort(_triangleIndexOutport);
 
-    addProperty(_volumeFilename);
+    addPort(_vertexOutport);
+    addPort(_tetIndexOutport);
+
+
+    //addProperty(_volumeFilename);
 
     _action.onChange([this]() { action(); });
     addProperty(_action);
 }
 
-void TetMesher::process() {
-    while (_hasProcessHandle) {
-#ifdef WIN32
-        DWORD exitCode;
-        BOOL b = GetExitCodeProcess(_processHandle, &exitCode);
-
-        if (!b) {
-            DWORD errCode = GetLastError();
-            char *err;
-            if (!FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM,
-                NULL,
-                errCode,
-                MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), // default language
-                (LPTSTR)&err,
-                0,
-                NULL))
-            {
-                continue;
-            }
-
-            static char buffer[1024];
-
-            inviwo::LogCentral::getPtr()->log(
-                "TetMesher", inviwo::LogLevel::Info,
-                inviwo::LogAudience::Developer,
-                __FILE__,
-                __FUNCTION__,
-                __LINE__,
-                "Failed to get exit code process"
-            );
-
-            inviwo::LogCentral::getPtr()->log(
-                "TetMesher", inviwo::LogLevel::Info,
-                inviwo::LogAudience::Developer,
-                __FILE__,
-                __FUNCTION__,
-                __LINE__,
-                err
-            );
-            continue;
-        }
-
-        if (exitCode == STILL_ACTIVE) {
-            LogInfo("Generating tetrahedral mesh...");
-            std::this_thread::sleep_for(std::chrono::milliseconds(250));
-        }
-        else {
-            LogInfo("Exit code: " << exitCode);
-            break;
-        }
-#else
-#error("Implement me")
-#endif
-    }
-
-}
+void TetMesher::process() {}
 
 void TetMesher::action() {
     std::shared_ptr<const Volume> vol = _inport.getData();
+
+    getProgressBar().show();
 
     const VolumeRAM* v = vol->getRepresentation<VolumeRAM>();
 
@@ -226,6 +96,7 @@ void TetMesher::action() {
             }
         }
     }
+    getProgressBar().updateProgress(0.3f);
 
     //delete data;
 
@@ -245,6 +116,7 @@ void TetMesher::action() {
 
     LogInfo("Finished marching cubes");
     LogInfo("Marching cubes model has " << V.rows() << " vertices and " << F.rows() << " faces");
+    getProgressBar().updateProgress(0.6f);
 
 
     //
@@ -305,24 +177,41 @@ void TetMesher::action() {
     V.col(2) = V.col(1);
     V.col(1) = V2;
 
-    std::string outputName = _volumeFilename.get() + ".off";
-    igl::writeOFF(outputName, V, newF);
+    std::shared_ptr<Eigen::MatrixXd> TV = std::make_shared<Eigen::MatrixXd>();
+    std::shared_ptr<Eigen::MatrixXi> TT = std::make_shared<Eigen::MatrixXi>();
+    *TV = V;
+    *TT = newF;
+
+    _triangleVertexOutport.setData(TV);
+    _triangleIndexOutport.setData(TT);
+
+    getProgressBar().updateProgress(1.f);
 
 
-    //
-    // gtet
-    //
+    //dispatchPool([this, V, newF]() {
+    //    //
+    //    // gtet
+    //    //
+    //    args.is_quiet = true;
+    //    args.max_pass = 5;
+    //    args.filter_energy = 200;
+    //    args.i_epsilon = 100;
+    //    args.i_dd = 100;
 
-#ifdef WIN32
-    _processHandle = startGtest(outputName);
-    if (_processHandle) {
-        _hasProcessHandle = true;
-        invalidate(InvalidationLevel::InvalidOutput);
-    }
-#else
-#error("Implement me")
-#endif
+    //    std::shared_ptr<Eigen::MatrixXd> TV = std::make_shared<Eigen::MatrixXd>();
+    //    std::shared_ptr<Eigen::MatrixXi> TT = std::make_shared<Eigen::MatrixXi>();
+    //    TetWild::gtet(
+    //        V,
+    //        newF,
+    //        *TV,
+    //        *TT
+    //    );
 
+    //    dispatchFront([this, TV, TT]() {
+    //        _vertexOutport.setData(TV);
+    //        _tetIndexOutport.setData(TT);
+    //    });
+    //});
 }
 
 

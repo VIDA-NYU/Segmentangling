@@ -16,6 +16,8 @@
 #include <inviwo/core/properties/cameraproperty.h>
 #include <inviwo/core/ports/imageport.h>
 
+#include <modules/segmentangling/common.h>
+
 #include <mutex>
 #include <thread>
 
@@ -48,6 +50,7 @@ private:
     bool isReadyToComputeDiffusion() const;
 
     std::shared_ptr<BasicMesh> createOutputSurfaceMesh(const Eigen::MatrixXd& TV);
+    std::shared_ptr<BasicMesh> createMeshFromTriangles();
 
 
 
@@ -96,6 +99,13 @@ private:
     // Ports
     //
     VolumeInport _inport;
+
+    VertexInport _trianglesVertexInport;
+    TetIndexInport _trianglesTetIndexInport;
+
+    VertexInport _tetraVertexInport;
+    TetIndexInport _tetraTetIndexInport;
+
     MeshOutport _meshOutport;
     std::shared_ptr<BasicMesh> _outputSurfaceMesh;
     std::atomic_bool _isOutputMeshDirty = false;
@@ -161,15 +171,36 @@ private:
     EventProperty _eventPreviousLevelSet;
     EventProperty _eventNextLevelSet;
 
+    const Eigen::MatrixXd& currentTV() const;
+    const Eigen::MatrixXi& currentTF() const;
+
     //
     // SLIM related members
     //
-    Eigen::MatrixXd _TVOriginal;
-    Eigen::MatrixXd _TV;
-    Eigen::MatrixXi _TF;
-    Eigen::MatrixXi _TT;
-    Eigen::MatrixXd _TFn;
-    Eigen::MatrixXd _texCoords;
+    struct {
+        Eigen::MatrixXd TVOriginal;
+        Eigen::MatrixXd TV;
+        Eigen::MatrixXi TF;
+        Eigen::MatrixXi TT;
+        Eigen::MatrixXd TFn;
+        Eigen::MatrixXd texCoords;
+    } _slim;
+
+    //
+    // Surface mesh related members
+    // 
+    struct {
+        Eigen::MatrixXd TV;
+        Eigen::MatrixXi TF;
+        Eigen::MatrixXd TFn;
+
+    } _surface;
+
+    enum class MeshType {
+        Tetra = 0,
+        Triangle
+    };
+    MeshType _currentMeshType;
 
     Eigen::VectorXd _isoValues;
 

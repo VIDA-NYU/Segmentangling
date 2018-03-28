@@ -3,6 +3,7 @@
 
 #include <modules/segmentangling/segmentanglingmoduledefine.h>
 #include <inviwo/core/processors/processor.h>
+#include <inviwo/core/processors/progressbarowner.h>
 #include <inviwo/core/ports/volumeport.h>
 
 #include <inviwo/core/properties/ordinalproperty.h>
@@ -16,12 +17,13 @@
 #include <inviwo/core/properties/cameraproperty.h>
 #include <inviwo/core/ports/imageport.h>
 
+#include <modules/segmentangling/common.h>
 #include <mutex>
 #include <thread>
 
 namespace inviwo {
 
-class IVW_MODULE_SEGMENTANGLING_API TetMesher : public Processor {
+class IVW_MODULE_SEGMENTANGLING_API TetMesher : public Processor, public ProgressBarOwner {
 public:
     TetMesher();
     virtual ~TetMesher() = default;
@@ -36,16 +38,14 @@ protected:
     
 private:
     VolumeInport _inport;
-    
-    FileProperty _volumeFilename;
-    ButtonProperty _action;
+    VertexOutport _triangleVertexOutport;
+    TetIndexOutport _triangleIndexOutport;
 
-#ifdef WIN32
-    HANDLE _processHandle;
-    std::atomic_bool _hasProcessHandle = false;
-#else
-#error("implement me")
-#endif
+    VertexOutport _vertexOutport;
+    TetIndexOutport _tetIndexOutport;
+
+    //FileProperty _volumeFilename;
+    ButtonProperty _action;
 };
 
 } // namespace

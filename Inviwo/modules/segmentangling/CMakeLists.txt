@@ -182,6 +182,21 @@ target_link_libraries(
     # optimized "${CMAKE_CURRENT_SOURCE_DIR}/ext/qhull/lib/qhullstatic.lib"
     # optimized "${CMAKE_CURRENT_SOURCE_DIR}/ext/qhull/lib/qhullstatic_r.lib"
 )
+#--------------------------------------------------------------------
+# GTET
+#--------------------------------------------------------------------
+
+add_subdirectory(ext/new_gtet)
+target_include_directories(
+    inviwo-module-segmentangling
+    PUBLIC
+    "${CMAKE_CURRENT_SOURCE_DIR}/ext/new_gtet"
+)
+target_link_libraries(inviwo-module-segmentangling PUBLIC new_gtet)
+
+
+
+
 
 #--------------------------------------------------------------------
 # Handle external resources

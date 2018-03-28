@@ -5,6 +5,8 @@
 #include <inviwo/core/ports/dataoutport.h>
 #include <modules/opengl/inviwoopengl.h>
 
+#include <Eigen/Core>
+
 namespace inviwo {
 
 struct ContourInformation {
@@ -21,6 +23,13 @@ using Feature = std::vector<uint32_t>;
 using FeatureInformation = std::vector<Feature>;
 using FeatureInport = DataInport<FeatureInformation>;
 using FeatureOutport = DataOutport<FeatureInformation>;
+
+
+using VertexInport = DataInport<Eigen::MatrixXd>;
+using VertexOutport = DataOutport<Eigen::MatrixXd>;
+
+using TetIndexInport = DataInport<Eigen::MatrixXi>;
+using TetIndexOutport = DataOutport<Eigen::MatrixXi>;
 
 } // namespace inviwo
 
