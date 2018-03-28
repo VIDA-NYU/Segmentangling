@@ -146,7 +146,7 @@ std::tuple<Eigen::VectorXi, std::vector<int>> TetMesher::findConnectedComponents
     LogInfo("The model has " << component_count.size() <<
         " connected components.");
 
-    return { components, component_count };
+    return { std::move(components), std::move(component_count) };
 }
 
 Eigen::MatrixXi TetMesher::filterConnectedComponents(const Eigen::MatrixXi& F,
@@ -184,7 +184,7 @@ Eigen::MatrixXi TetMesher::filterConnectedComponents(const Eigen::MatrixXi& F,
 
     int cutoffComponentCount = int(
         _componentCutoff * (float(max_component_count) - float(min_component_count)) + float(min_component_count)
-        );
+    );
 
 
 
@@ -253,9 +253,9 @@ void TetMesher::action() {
     //);
 
 
-    Eigen::VectorXd V2 = std::move(V.col(2));
-    V.col(2) = std::move(V.col(1));
-    V.col(1) = std::move(V2);
+    //Eigen::VectorXd V2 = std::move(V.col(2));
+    //V.col(2) = std::move(V.col(1));
+    //V.col(1) = std::move(V2);
 
     std::shared_ptr<Eigen::MatrixXd> TV = std::make_shared<Eigen::MatrixXd>();
     std::shared_ptr<Eigen::MatrixXi> TT = std::make_shared<Eigen::MatrixXi>();

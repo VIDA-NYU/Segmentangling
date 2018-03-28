@@ -50,6 +50,7 @@ private:
     bool isReadyToComputeDiffusion() const;
 
     std::shared_ptr<BasicMesh> createOutputSurfaceMesh(const Eigen::MatrixXd& TV);
+    std::shared_ptr<BasicMesh> createOuterSurfaceMesh(const Eigen::MatrixXd& TV);
     std::shared_ptr<BasicMesh> createMeshFromTriangles();
 
 
@@ -77,6 +78,9 @@ private:
     struct InputParams {
         int frontVertexId = -1;
         int backVertexId = -1;
+
+        float frontAngle = 0.f;
+        float backAngle = 0.f;
         //std::vector<float> levelSetOrientations;
 
         //std::vector<float>::iterator currentLevelset = levelSetOrientations.end();
@@ -110,8 +114,12 @@ private:
     VertexInport _trianglesVertexInport;
     TetIndexInport _trianglesTetIndexInport;
 
-    VertexInport _tetraVertexInport;
-    TetIndexInport _tetraTetIndexInport;
+    VertexInport _skeletonTetraVertexInport;
+    TetIndexInport _skeletonTetraTetIndexInport;
+
+    VertexInport _outerTetraVertexInport;
+    TetIndexInport _outerTetraTetIndexInport;
+
 
     MeshOutport _meshOutport;
     std::shared_ptr<BasicMesh> _outputSurfaceMesh;
@@ -134,9 +142,9 @@ private:
     //
 
     // Input
-    StringProperty _filename;
-    bool _filenameDirty = false;
-    ButtonProperty _reload;
+    //StringProperty _filename;
+    //bool _filenameDirty = false;
+    //ButtonProperty _reload;
 
     
     // Output 
@@ -191,7 +199,14 @@ private:
         Eigen::MatrixXi TT;
         Eigen::MatrixXd TFn;
         Eigen::MatrixXd texCoords;
-    } _tetra;
+    } _skeletonTetra;
+
+    struct {
+        Eigen::MatrixXd TV;
+        Eigen::MatrixXi TF;
+        Eigen::MatrixXd TFn;
+        Eigen::MatrixXi TT;
+    } _outerTetra;
 
     //
     // Surface mesh related members
@@ -200,7 +215,6 @@ private:
         Eigen::MatrixXd TV;
         Eigen::MatrixXi TF;
         Eigen::MatrixXd TFn;
-
     } _triangle;
 
     bool hasTetraMesh() const;

@@ -9,6 +9,7 @@ set(HEADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/processors/datapreprocessor.h
     ${CMAKE_CURRENT_SOURCE_DIR}/processors/loadcontourtree.h
     ${CMAKE_CURRENT_SOURCE_DIR}/processors/segmentationidraycaster.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/processors/selector.h
     ${CMAKE_CURRENT_SOURCE_DIR}/processors/straightener.h
     ${CMAKE_CURRENT_SOURCE_DIR}/processors/tetmesher.h
     ${CMAKE_CURRENT_SOURCE_DIR}/processors/topoppparameterer.h
@@ -40,6 +41,7 @@ set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/processors/datapreprocessor.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/processors/loadcontourtree.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/processors/segmentationidraycaster.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/processors/selector.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/processors/straightener.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/processors/tetmesher.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/processors/topoppparameterer.cpp
