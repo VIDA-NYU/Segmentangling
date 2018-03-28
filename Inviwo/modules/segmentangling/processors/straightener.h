@@ -42,8 +42,8 @@ private:
     void eventReset();
     void eventPreviousParameter();
     void eventNextParameter();
-    void eventPreviousLevelset();
-    void eventNextLevelset();
+    //void eventPreviousLevelset();
+    //void eventNextLevelset();
     void diffusionDistances();
     void updateConstraints();
 
@@ -77,9 +77,9 @@ private:
     struct InputParams {
         int frontVertexId = -1;
         int backVertexId = -1;
-        std::vector<float> levelSetOrientations;
+        //std::vector<float> levelSetOrientations;
 
-        std::vector<float>::iterator currentLevelset = levelSetOrientations.end();
+        //std::vector<float>::iterator currentLevelset = levelSetOrientations.end();
     };
 
     bool isInputParamEmpty(const InputParams& i) const;
@@ -177,8 +177,8 @@ private:
     EventProperty _eventReset;
     EventProperty _eventPreviousInputParameter;
     EventProperty _eventNextInputParameter;
-    EventProperty _eventPreviousLevelSet;
-    EventProperty _eventNextLevelSet;
+    //EventProperty _eventPreviousLevelSet;
+    //EventProperty _eventNextLevelSet;
 
     const Eigen::MatrixXd& currentTV() const;
     const Eigen::MatrixXi& currentTF() const;
@@ -193,7 +193,7 @@ private:
         Eigen::MatrixXi TT;
         Eigen::MatrixXd TFn;
         Eigen::MatrixXd texCoords;
-    } _slim;
+    } _tetra;
 
     //
     // Surface mesh related members
@@ -203,7 +203,7 @@ private:
         Eigen::MatrixXi TF;
         Eigen::MatrixXd TFn;
 
-    } _surface;
+    } _triangle;
 
     bool hasTetraMesh() const;
 

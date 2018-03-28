@@ -1,5 +1,5 @@
-#ifndef __AB_TETMESHER_H__
-#define __AB_TETMESHER_H__
+#ifndef __AB_YIXINLOADER_H__
+#define __AB_YIXINLOADER_H__
 
 #include <modules/segmentangling/segmentanglingmoduledefine.h>
 #include <inviwo/core/processors/processor.h>
@@ -23,10 +23,10 @@
 
 namespace inviwo {
 
-class IVW_MODULE_SEGMENTANGLING_API TetMesher : public Processor, public ProgressBarOwner {
+class IVW_MODULE_SEGMENTANGLING_API YixinLoader : public Processor {
 public:
-    TetMesher();
-    virtual ~TetMesher() = default;
+    YixinLoader();
+    virtual ~YixinLoader() = default;
 
     virtual const ProcessorInfo getProcessorInfo() const override;
     static const ProcessorInfo processorInfo_;
@@ -37,20 +37,12 @@ protected:
     void action();
     
 private:
-    VolumeInport _inport;
-    VertexOutport _triangleVertexOutport;
-    TetIndexOutport _triangleIndexOutport;
-
     VertexOutport _vertexOutport;
     TetIndexOutport _tetIndexOutport;
-
-    //FileProperty _volumeFilename;
-    FloatProperty _componentCutoff;
+    FileProperty _file;
     ButtonProperty _action;
-
-    bool _isFirstFrame = true;
 };
 
 } // namespace
 
-#endif // __AB_TETMESHER_H__
+#endif // __AB_YIXINLOADER_H__

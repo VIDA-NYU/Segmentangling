@@ -14,6 +14,7 @@ set(HEADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/processors/volumecollectiongenerator.h
     ${CMAKE_CURRENT_SOURCE_DIR}/processors/volumeexportgenerator.h
     ${CMAKE_CURRENT_SOURCE_DIR}/processors/volumesliceoverlay.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/processors/yixinloader.h
     ${CMAKE_CURRENT_SOURCE_DIR}/util/defer.h
 
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../ContourTree/constants.h
@@ -43,6 +44,7 @@ set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/processors/volumecollectiongenerator.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/processors/volumeexportgenerator.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/processors/volumesliceoverlay.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/processors/yixinloader.cpp
 
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../fish_deformation/src/utils/utils.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../fish_deformation/src/utils/yixin_loader.cpp

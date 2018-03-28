@@ -37,6 +37,7 @@ TetMesher::TetMesher()
     , _vertexOutport("_vertexOutport")
     , _tetIndexOutport("_tetIndexOutport")
     //, _volumeFilename("_volumeFilename", "Volume Filename")
+    , _componentCutoff("_componentCutoff", "Component Cutoff Ratio", 0.75f, 0.f, 1.f)
     , _action("_action", "Go")
 {
     addPort(_inport);
@@ -51,6 +52,9 @@ TetMesher::TetMesher()
 
     _action.onChange([this]() { action(); });
     addProperty(_action);
+
+
+    addProperty(_componentCutoff);
 }
 
 void TetMesher::process() {
@@ -149,37 +153,81 @@ void TetMesher::action() {
     LogInfo("Finding component with most vertices...");
     int max_component = -1;
     int max_component_count = 0;
+    int min_component = -1;
+    int min_component_count = std::numeric_limits<int>::max();
+
     for (int i = 0; i < component_count.size(); i++) {
         if (max_component_count < component_count[i]) {
             max_component = i;
             max_component_count = component_count[i];
         }
+
+        if (min_component_count > component_count[i]) {
+            min_component = i;
+            min_component_count = component_count[i];
+        }
+
     }
     LogInfo("Component " << max_component <<
         " has the most vertices with a count of " <<
         max_component_count);
 
-    LogInfo("Deleting smaller components...");
+    LogInfo("Component " << min_component <<
+        " has the least vertices with a count of " <<
+        min_component_count);
+
+
+    int cutoffComponentCount = int(
+        _componentCutoff * (float(max_component_count) - float(min_component_count)) + float(min_component_count)
+    );
+
+
+
+    LogInfo("Deleting components with count < " << cutoffComponentCount);
     newF.resize(F.rows(), 3);
 
     int fcount = 0;
     for (int i = 0; i < F.rows(); i++) {
         bool keep = true;
         for (int j = 0; j < 3; j++) {
-            if (components[F(i, j)] != max_component) {
+            if (component_count[components[F(i, j)]] <= cutoffComponentCount) {
                 keep = false;
                 break;
             }
         }
         if (keep) {
+            //nKeep++;
             newF.row(fcount++) = F.row(i);
         }
     }
+    int nKeep = std::accumulate(
+        component_count.begin(),
+        component_count.end(),
+        0,
+        [cutoffComponentCount](int i, int j) {
+            if (j <= cutoffComponentCount) {
+                return i;
+            }
+            else {
+                return i + 1;
+            }
+        }
+    );
+
+    LogInfo("Keeping " << nKeep << " out of " << component_count.size() << " components");
 
     LogInfo("Largest component of model has " << fcount << " faces and " <<
         newF.maxCoeff() << " vertices");
     newF.conservativeResize(fcount, 3);
 
+
+    //std::sort(component_count.begin(), component_count.end());
+    //LogInfo("N Components:");
+    //std::for_each(
+    //    component_count.begin(),
+    //    component_count.end(),
+    //    [this](int i) { LogInfo(i); }
+    //);
 
 
     Eigen::VectorXd V2 = V.col(2);

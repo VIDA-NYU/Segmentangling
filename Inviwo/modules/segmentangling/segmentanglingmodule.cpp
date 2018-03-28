@@ -10,6 +10,7 @@
 #include <modules/segmentangling/processors/volumecollectiongenerator.h>
 #include <modules/segmentangling/processors/volumeexportgenerator.h>
 #include <modules/segmentangling/processors/volumesliceoverlay.h>
+#include <modules/segmentangling/processors/yixinloader.h>
 
 namespace inviwo {
 
@@ -33,6 +34,7 @@ SegmentanglingModule::SegmentanglingModule(InviwoApplication* app)
     registerProcessor<VolumeCollectionGenerator>();
     registerProcessor<VolumeExportGenerator>();
     registerProcessor<VolumeSliceOverlay>();
+    registerProcessor<YixinLoader>();
 }
 
 }  // namespace

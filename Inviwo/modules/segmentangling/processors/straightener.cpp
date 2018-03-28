@@ -60,7 +60,7 @@ std::string Straightener::selectionStateToString(SelectionState s) {
 }
 
 bool Straightener::isInputParamEmpty(const InputParams& i) const {
-    return (i.frontVertexId == -1) && (i.backVertexId == -1) && (i.levelSetOrientations.empty());
+    return (i.frontVertexId == -1) && (i.backVertexId == -1);
 }
 
 
@@ -85,11 +85,11 @@ void Straightener::slimThread() {
             _deformationConstraints.slim_constraints(slim_b, slim_bc, _debugOnlyEndAndTets);
 
             const double soft_const_p = 1e5;
-            const MatrixXd TV_0 = _slim.TV;
+            const MatrixXd TV_0 = _tetra.TV;
             sData.exp_factor = 5.0;
             slim_precompute(
-                _slim.TVOriginal,
-                _slim.TT,
+                _tetra.TVOriginal,
+                _tetra.TT,
                 TV_0,
                 sData,
                 igl::SLIMData::EXP_CONFORMAL,
@@ -207,14 +207,14 @@ Straightener::Straightener()
         [this](Event*) { eventNextParameter(); },
         IvwKey::D
     )
-    , _eventPreviousLevelSet("_eventPreviousLevelSet", "Previous level set",
-        [this](Event*) { eventPreviousLevelset(); },
-        IvwKey::W
-    )
-    , _eventNextLevelSet("_eventNextLevelSet", "Previous level set",
-        [this](Event*) { eventNextLevelset(); },
-        IvwKey::S
-    )
+    //, _eventPreviousLevelSet("_eventPreviousLevelSet", "Previous level set",
+    //    [this](Event*) { eventPreviousLevelset(); },
+    //    IvwKey::W
+    //)
+    //, _eventNextLevelSet("_eventNextLevelSet", "Previous level set",
+    //    [this](Event*) { eventNextLevelset(); },
+    //    IvwKey::S
+    //)
     , _inputParameters(1)
     , _currentInputParameter(_inputParameters.begin())
     , _inputParameterSelection("_inputParameterSelection", "Input parameter Selection")
@@ -324,14 +324,14 @@ void Straightener::process() {
 
         if (v->rows() > 0 && t->rows() > 0) {
             // We were passed a surface mesh consisting of triangles
-            _surface.TV = *v;
-            _surface.TF = *t;
+            _triangle.TV = *v;
+            _triangle.TF = *t;
 
             size3_t dim = _inport.getData()->getDimensions();
             size_t maxDim = glm::compMax(_inport.getData()->getDimensions()) + 1;
-            _surface.TV /= maxDim;
+            _triangle.TV /= maxDim;
 
-            igl::per_vertex_normals(_surface.TV, _surface.TF, _surface.TFn);
+            igl::per_vertex_normals(_triangle.TV, _triangle.TF, _triangle.TFn);
 
             _outputSurfaceMesh = createMeshFromTriangles();
             _meshOutport.setData(_outputSurfaceMesh);
@@ -345,20 +345,19 @@ void Straightener::process() {
         std::shared_ptr<const Eigen::MatrixXi> t = _tetraTetIndexInport.getData();
 
         if (v->rows() > 0 || t->rows() > 0) {
-
             // We were passed a tetrahedral mesh
-            _slim.TVOriginal = *v;
-            _slim.TT = *t;
+            _tetra.TVOriginal = *v;
+            _tetra.TT = *t;
 
             std::vector<std::array<int, 4>> tris_sorted;
             std::vector<std::array<int, 4>> tris;
 
             int tcount = 0;
-            for (int i = 0; i < _slim.TT.rows(); i += 1) {
-                const int e1 = _slim.TT(i, 0);
-                const int e2 = _slim.TT(i, 1);
-                const int e3 = _slim.TT(i, 2);
-                const int e4 = _slim.TT(i, 3);
+            for (int i = 0; i < _tetra.TT.rows(); i += 1) {
+                const int e1 = _tetra.TT(i, 0);
+                const int e2 = _tetra.TT(i, 1);
+                const int e3 = _tetra.TT(i, 2);
+                const int e4 = _tetra.TT(i, 3);
                 std::array<int, 4> t1, t2, t3, t4;
                 t1 = std::array<int, 4>{ { e1, e2, e3, INT_MAX }};
                 t2 = std::array<int, 4>{ { e1, e3, e4, INT_MAX }};
@@ -383,38 +382,38 @@ void Straightener::process() {
 
 
                 int fcount = 0;
-                _slim.TF.resize(tris_sorted.size(), 3);
+                _tetra.TF.resize(tris_sorted.size(), 3);
                 sort(tris_sorted.begin(), tris_sorted.end());
-                for (int i = 0; i < _slim.TF.rows();) {
+                for (int i = 0; i < _tetra.TF.rows();) {
                     int v1 = tris_sorted[i][0], v2 = tris_sorted[i][1], v3 = tris_sorted[i][2];
                     int tid = tris_sorted[i][3];
                     int count = 0;
-                    while (i < _slim.TF.rows() && v1 == tris_sorted[i][0] && v2 == tris_sorted[i][1] && v3 == tris_sorted[i][2]) {
+                    while (i < _tetra.TF.rows() && v1 == tris_sorted[i][0] && v2 == tris_sorted[i][1] && v3 == tris_sorted[i][2]) {
                         i += 1;
                         count += 1;
                     }
                     if (count == 1) {
-                        _slim.TF.row(fcount++) = Eigen::RowVector3i(tris[tid][0], tris[tid][1], tris[tid][2]);
+                        _tetra.TF.row(fcount++) = Eigen::RowVector3i(tris[tid][0], tris[tid][1], tris[tid][2]);
                     }
                 }
 
-                _slim.TF.conservativeResize(fcount, 3);
+                _tetra.TF.conservativeResize(fcount, 3);
                 //_currentMeshType = MeshType::Tetra;
             }
 
-            _slim.TV = _slim.TVOriginal;
+            _tetra.TV = _tetra.TVOriginal;
             //edge_endpoints(TV, TT, TEV1, TEV2);
 
             size3_t dim = _inport.getData()->getDimensions();
             size_t maxDim = glm::compMax(_inport.getData()->getDimensions()) + 1;
 
-            _slim.TVOriginal /= maxDim;
-            _slim.TV /= maxDim;
+            _tetra.TVOriginal /= maxDim;
+            _tetra.TV /= maxDim;
 
 
-            _slim.texCoords = _slim.TV - Eigen::MatrixXd::Ones(_slim.TV.rows(), _slim.TV.cols());
+            _tetra.texCoords = _tetra.TV - Eigen::MatrixXd::Ones(_tetra.TV.rows(), _tetra.TV.cols());
 
-            igl::per_vertex_normals(_slim.TV, _slim.TF, _slim.TFn);
+            igl::per_vertex_normals(_tetra.TV, _tetra.TF, _tetra.TFn);
 
             //_texCoords.resize(_TV.rows(), 3);
             //for (int i = 0; i < _TV.rows(); i++) {
@@ -423,9 +422,15 @@ void Straightener::process() {
             //}
 
             _meshLock.lock();
-            _outputSurfaceMesh = createOutputSurfaceMesh(_slim.TV);
+            _outputSurfaceMesh = createOutputSurfaceMesh(_tetra.TV);
             _meshOutport.setData(_outputSurfaceMesh);
             _meshLock.unlock();
+
+            for (InputParams& i : _inputParameters) {
+                i.frontVertexId = nearest_vertex(_tetra.TV, _triangle.TV.row(i.frontVertexId));
+                i.backVertexId = nearest_vertex(_tetra.TV, _triangle.TV.row(i.backVertexId));
+            }
+
 
             if (_readyToSLIM) {
                 diffusionDistances();
@@ -472,7 +477,7 @@ void Straightener::diffusionDistances() {
 
     // Discrete Gradient operator
     SparseMatrixXd G;
-    igl::grad(_slim.TV, _slim.TT, G);
+    igl::grad(_tetra.TV, _tetra.TT, G);
 
     SimplicialLDLT<SparseMatrixXd> solver;
 
@@ -486,12 +491,12 @@ void Straightener::diffusionDistances() {
     constraint_values(0, 0) = 1.0;
     constraint_values(1, 0) = 0.0;
 
-    igl::harmonic(_slim.TV, _slim.TT, constraint_indices,
+    igl::harmonic(_tetra.TV, _tetra.TT, constraint_indices,
         constraint_values, 1, _isoValues);
 
     scale_zero_one(_isoValues);
     VectorXd g = G * _isoValues;
-    Map<MatrixXd> V(g.data(), _slim.TT.rows(), 3);
+    Map<MatrixXd> V(g.data(), _tetra.TT.rows(), 3);
     V.rowwise().normalize();
 
     solver.compute(G.transpose()*G);
@@ -503,8 +508,8 @@ void Straightener::updateConstraints() {
     std::lock_guard<std::mutex> g(_constraintsLock);
 
     _deformationConstraints.update_bone_constraints(
-        _slim.TV,
-        _slim.TT,
+        _tetra.TV,
+        _tetra.TT,
         _isoValues,
         { { _currentInputParameter->frontVertexId, _currentInputParameter->backVertexId } },
         _nBones
@@ -534,17 +539,17 @@ std::shared_ptr<BasicMesh> Straightener::createOutputSurfaceMesh(const Eigen::Ma
 
         mesh->addVertex(
             p, // pos
-            glm::vec3(_slim.TFn(i, 0), _slim.TFn(i, 1), _slim.TFn(i, 2)), // normal
+            glm::vec3(_tetra.TFn(i, 0), _tetra.TFn(i, 1), _tetra.TFn(i, 2)), // normal
             glm::vec3(0.f), // texCoord
             c // color
         );
     }
 
-    for (int i = 0; i < _slim.TF.rows(); ++i) {
+    for (int i = 0; i < _tetra.TF.rows(); ++i) {
         indices->add({
-            static_cast<unsigned int>(_slim.TF(i, 0)),
-            static_cast<unsigned int>(_slim.TF(i, 1)),
-            static_cast<unsigned int>(_slim.TF(i, 2))
+            static_cast<unsigned int>(_tetra.TF(i, 0)),
+            static_cast<unsigned int>(_tetra.TF(i, 1)),
+            static_cast<unsigned int>(_tetra.TF(i, 2))
         });
     }
 
@@ -558,24 +563,24 @@ std::shared_ptr<BasicMesh> Straightener::createMeshFromTriangles() {
 
     size_t maxDim = glm::compMax(_inport.getData()->getDimensions()) + 1;
 
-    for (int i = 0; i < _surface.TV.rows(); ++i) {
-        glm::vec3 p = glm::vec3(_surface.TV(i, 0), _surface.TV(i, 1), _surface.TV(i, 2));
+    for (int i = 0; i < _triangle.TV.rows(); ++i) {
+        glm::vec3 p = glm::vec3(_triangle.TV(i, 0), _triangle.TV(i, 1), _triangle.TV(i, 2));
         glm::vec4 c = glm::vec4((p * float(maxDim)) / glm::vec3(_inport.getData()->getDimensions()) + glm::vec3(1.f), 1.f);
         //glm::vec4(colors(i, 0), colors(i, 1), colors(i, 2), 1.f);
 
         mesh->addVertex(
             p, // pos
-            glm::vec3(_surface.TFn(i, 0), _surface.TFn(i, 1), _surface.TFn(i, 2)), // normal
+            glm::vec3(_triangle.TFn(i, 0), _triangle.TFn(i, 1), _triangle.TFn(i, 2)), // normal
             glm::vec3(0.f), // texCoord
             c // color
         );
     }
 
-    for (int i = 0; i < _surface.TF.rows(); ++i) {
+    for (int i = 0; i < _triangle.TF.rows(); ++i) {
         indices->add({
-            static_cast<unsigned int>(_surface.TF(i, 0)),
-            static_cast<unsigned int>(_surface.TF(i, 1)),
-            static_cast<unsigned int>(_surface.TF(i, 2))
+            static_cast<unsigned int>(_triangle.TF(i, 0)),
+            static_cast<unsigned int>(_triangle.TF(i, 1)),
+            static_cast<unsigned int>(_triangle.TF(i, 2))
         });
     }
 
@@ -593,8 +598,8 @@ void Straightener::createDebugMeshes() {
     }
 
 
-    for (int i = 0; i < _slim.TV.rows(); ++i) {
-        glm::vec3 p = eigenToGLM(_slim.TV.row(i));
+    for (int i = 0; i < _tetra.TV.rows(); ++i) {
+        glm::vec3 p = eigenToGLM(_tetra.TV.row(i));
         glm::vec4 c = _isoValues.rows() == 0 ? glm::vec4(1.f) : eigenToGLMColor(colors.row(i));
         //glm::vec4(colors(i, 0), colors(i, 1), colors(i, 2), 1.f);
 
@@ -608,7 +613,7 @@ void Straightener::createDebugMeshes() {
     LogInfo("nBoneConstraints: " << _deformationConstraints.m_bone_constraints_idx.size());
 
     for (int i : _deformationConstraints.m_bone_constraints_idx) {
-        glm::vec3 p = eigenToGLM(_slim.TV.row(i));
+        glm::vec3 p = eigenToGLM(_tetra.TV.row(i));
         glm::vec4 c(0.f, 0.95f, 0.f, 1.f);
 
         std::shared_ptr<BasicMesh> m = meshutil::sphere(p, 1.5f * _sphereRadius, c);
@@ -685,6 +690,7 @@ void Straightener::eventUpdateMousePos(Event* e) {
     {
         int max;
         bc.maxCoeff(&max);
+        // HUH!?!  currentTF or currentTV?
         _currentHoverVertexId = currentTF()(fid, max);
     }
 
@@ -778,7 +784,7 @@ void Straightener::eventReset() {
     _backSelectionMesh.setData(nullptr);
 
     _isoValues.resize(0, 0);
-    hasTetraMesh() ? createOutputSurfaceMesh(_slim.TV) : createMeshFromTriangles();
+    hasTetraMesh() ? createOutputSurfaceMesh(_tetra.TV) : createMeshFromTriangles();
 }
 
 void Straightener::eventPreviousParameter() {
@@ -820,48 +826,48 @@ void Straightener::eventNextParameter() {
     updateDiffusionReadyString();
 }
 
-void Straightener::eventPreviousLevelset() {
-    if (_stopInteraction) {
-        return;
-    }
-    LogInfo("Selecting previous levelset");
+//void Straightener::eventPreviousLevelset() {
+    //if (_stopInteraction) {
+    //    return;
+    //}
+    //LogInfo("Selecting previous levelset");
 
-    if (_currentInputParameter->currentLevelset == _currentInputParameter->levelSetOrientations.begin()) {
-        // We are at the first level set
-        return;
-    }
+    //if (_currentInputParameter->currentLevelset == _currentInputParameter->levelSetOrientations.begin()) {
+    //    // We are at the first level set
+    //    return;
+    //}
 
-    --(_currentInputParameter->currentLevelset);
+    //--(_currentInputParameter->currentLevelset);
 
-    updateDiffusionReadyString();
-}
+    //updateDiffusionReadyString();
+//}
 
-void Straightener::eventNextLevelset() {
-    if (_stopInteraction) {
-        return;
-    }
-    LogInfo("Selecting next levelset");
+//void Straightener::eventNextLevelset() {
+    //if (_stopInteraction) {
+    //    return;
+    //}
+    //LogInfo("Selecting next levelset");
 
-    if (_currentInputParameter->currentLevelset + 1 == _currentInputParameter->levelSetOrientations.end()) {
-        // We are at the last level set
-        return;
-    }
+    //if (_currentInputParameter->currentLevelset + 1 == _currentInputParameter->levelSetOrientations.end()) {
+    //    // We are at the last level set
+    //    return;
+    //}
 
-    ++(_currentInputParameter->currentLevelset);
+    //++(_currentInputParameter->currentLevelset);
 
-    updateDiffusionReadyString();
-}
+    //updateDiffusionReadyString();
+//}
 
 const Eigen::MatrixXd& Straightener::currentTV() const {
-    return hasTetraMesh() ? _slim.TV : _surface.TV;
+    return hasTetraMesh() ? _tetra.TV : _triangle.TV;
 }
 
 const Eigen::MatrixXi& Straightener::currentTF() const {
-    return hasTetraMesh() ? _slim.TF : _surface.TF;
+    return hasTetraMesh() ? _tetra.TF : _triangle.TF;
 }
 
 bool Straightener::hasTetraMesh() const {
-    return _slim.TVOriginal.rows() > 0;
+    return _tetra.TVOriginal.rows() > 0;
 }
 
 
