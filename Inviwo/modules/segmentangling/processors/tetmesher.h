@@ -21,6 +21,8 @@
 #include <mutex>
 #include <thread>
 
+#include <tuple>
+
 namespace inviwo {
 
 class IVW_MODULE_SEGMENTANGLING_API TetMesher : public Processor, public ProgressBarOwner {
@@ -35,7 +37,12 @@ protected:
     virtual void process() override;
 
     void action();
-    
+    void updateFilter();
+
+    std::tuple<Eigen::MatrixXd, Eigen::MatrixXi> marchingCubes(const VolumeRAM& v);
+    std::tuple<Eigen::VectorXi, std::vector<int>> findConnectedComponents(const Eigen::MatrixXd& V, const Eigen::MatrixXi& F);
+    Eigen::MatrixXi filterConnectedComponents(const Eigen::MatrixXi& F, const Eigen::VectorXi& components, const std::vector<int>& componentsCount);
+
 private:
     VolumeInport _inport;
     VertexOutport _triangleVertexOutport;
@@ -47,6 +54,10 @@ private:
     //FileProperty _volumeFilename;
     FloatProperty _componentCutoff;
     ButtonProperty _action;
+
+    Eigen::MatrixXi _F;
+    Eigen::VectorXi _components;
+    std::vector<int> nComponents;
 
     bool _isFirstFrame = true;
 };

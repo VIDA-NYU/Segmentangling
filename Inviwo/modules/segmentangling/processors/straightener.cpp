@@ -115,7 +115,6 @@ void Straightener::slimThread() {
         igl::slim_solve(sData, 1);
 
         _slimDataMutex.lock();
-
         _slimDataOutput = sData.V_o;
         _slimDataMutex.unlock();
 
@@ -178,7 +177,6 @@ Straightener::Straightener()
     , _sphereRadius("_sphereRadius", "Sphere Radius", 0.00075f, 0.f, 0.015f)
     , _reload("reload", "Reload")
     , _windowSize("_windowSize", "Window Size")
-    , _loadDataset("_loadDataset", "Load Dataset")
     //, _levelsetPlane{
     //    FloatVec3Property("levelset_normal", "Normal"),
     //    FloatVec3Property("levelset_position", "Position"),
@@ -240,8 +238,6 @@ Straightener::Straightener()
     //// Useful properties
     //addProperty(_levelsetPlane.normal);
     //addProperty(_levelsetPlane.position);
-
-    addProperty(_loadDataset);
 
     // Internal properties
     _windowSize.setReadOnly(true);

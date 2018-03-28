@@ -11,6 +11,7 @@
 #include <modules/segmentangling/processors/volumeexportgenerator.h>
 #include <modules/segmentangling/processors/volumesliceoverlay.h>
 #include <modules/segmentangling/processors/yixinloader.h>
+#include <modules/segmentangling/processors/topoppparameterer.h>
 
 namespace inviwo {
 
@@ -31,6 +32,7 @@ SegmentanglingModule::SegmentanglingModule(InviwoApplication* app)
     registerProcessor<LoadContourTree>();
     registerProcessor<SegmentationIdRaycaster>();
     registerProcessor<Straightener>();
+    registerProcessor<TopoPPParameterer>();
     registerProcessor<VolumeCollectionGenerator>();
     registerProcessor<VolumeExportGenerator>();
     registerProcessor<VolumeSliceOverlay>();

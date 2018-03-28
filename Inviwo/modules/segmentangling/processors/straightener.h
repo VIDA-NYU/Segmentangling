@@ -138,8 +138,6 @@ private:
     bool _filenameDirty = false;
     ButtonProperty _reload;
 
-    ButtonProperty _loadDataset;
-
     
     // Output 
     IntVec2Property _windowSize;

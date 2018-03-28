@@ -54,6 +54,7 @@ TetMesher::TetMesher()
     addProperty(_action);
 
 
+    _componentCutoff.onChange([this]() { updateFilter(); });
     addProperty(_componentCutoff);
 }
 
@@ -68,13 +69,7 @@ void TetMesher::process() {
     }
 }
 
-void TetMesher::action() {
-    std::shared_ptr<const Volume> vol = _inport.getData();
-
-    getProgressBar().show();
-
-    const VolumeRAM* v = vol->getRepresentation<VolumeRAM>();
-
+std::tuple<Eigen::MatrixXd, Eigen::MatrixXi> TetMesher::marchingCubes(const VolumeRAM& v) {
     Eigen::MatrixXd V;
     Eigen::MatrixXi F;
 
@@ -83,24 +78,24 @@ void TetMesher::action() {
     //
     LogInfo("Compute marching cubes");
     Eigen::MatrixXd GP(
-        (vol->getDimensions().x + 2) * (vol->getDimensions().y + 2) * (vol->getDimensions().z + 2),
+        (v.getDimensions().x + 2) * (v.getDimensions().y + 2) * (v.getDimensions().z + 2),
         3
     );
     Eigen::VectorXd SV(GP.rows());
 
     int readcount = 0;
     //int appendcount = 0;
-    for (int zi = 0; zi < vol->getDimensions().z + 2; zi++) {
-        for (int yi = 0; yi < vol->getDimensions().y + 2; yi++) {
-            for (int xi = 0; xi < vol->getDimensions().x + 2; xi++) {
-                if (xi == 0 || yi == 0 || zi == 0 || xi == (vol->getDimensions().x + 1) ||
-                    yi == (vol->getDimensions().y + 1) || zi == (vol->getDimensions().z + 1))
+    for (int zi = 0; zi < v.getDimensions().z + 2; zi++) {
+        for (int yi = 0; yi < v.getDimensions().y + 2; yi++) {
+            for (int xi = 0; xi < v.getDimensions().x + 2; xi++) {
+                if (xi == 0 || yi == 0 || zi == 0 || xi == (v.getDimensions().x + 1) ||
+                    yi == (v.getDimensions().y + 1) || zi == (v.getDimensions().z + 1))
                 {
                     SV[readcount] = -1.0;
                 }
                 else {
                     // We subtract 1 to account for the boundary
-                    SV[readcount] = v->getAsDouble({ xi - 1, yi - 1, zi - 1 });
+                    SV[readcount] = v.getAsDouble({ xi - 1, yi - 1, zi - 1 });
                     //SV[readcount] = double(data[appendcount]);
                     //appendcount += 1;
                 }
@@ -120,9 +115,9 @@ void TetMesher::action() {
     igl::copyleft::marching_cubes(
         SV,
         GP,
-        vol->getDimensions().x + 2,
-        vol->getDimensions().y + 2,
-        vol->getDimensions().z + 2,
+        v.getDimensions().x + 2,
+        v.getDimensions().y + 2,
+        v.getDimensions().z + 2,
         V,
         F
     );
@@ -131,12 +126,13 @@ void TetMesher::action() {
     LogInfo("Marching cubes model has " << V.rows() << " vertices and " << F.rows() << " faces");
     getProgressBar().updateProgress(0.6f);
 
+    return { V, F };
+}
 
+std::tuple<Eigen::VectorXi, std::vector<int>> TetMesher::findConnectedComponents(const Eigen::MatrixXd& V, const Eigen::MatrixXi& F) {
     //
     // remove_garbage_components
     //
-    Eigen::MatrixXi newF;
-
     LogInfo("Computing connected components...");
     Eigen::VectorXi components;
     igl::components(F, components);
@@ -150,21 +146,30 @@ void TetMesher::action() {
     LogInfo("The model has " << component_count.size() <<
         " connected components.");
 
+    return { components, component_count };
+}
+
+Eigen::MatrixXi TetMesher::filterConnectedComponents(const Eigen::MatrixXi& F,
+        const Eigen::VectorXi& components, const std::vector<int>& componentsCount)
+{
+    Eigen::MatrixXi newF;
+
+
     LogInfo("Finding component with most vertices...");
     int max_component = -1;
     int max_component_count = 0;
     int min_component = -1;
     int min_component_count = std::numeric_limits<int>::max();
 
-    for (int i = 0; i < component_count.size(); i++) {
-        if (max_component_count < component_count[i]) {
+    for (int i = 0; i < componentsCount.size(); i++) {
+        if (max_component_count < componentsCount[i]) {
             max_component = i;
-            max_component_count = component_count[i];
+            max_component_count = componentsCount[i];
         }
 
-        if (min_component_count > component_count[i]) {
+        if (min_component_count > componentsCount[i]) {
             min_component = i;
-            min_component_count = component_count[i];
+            min_component_count = componentsCount[i];
         }
 
     }
@@ -179,7 +184,7 @@ void TetMesher::action() {
 
     int cutoffComponentCount = int(
         _componentCutoff * (float(max_component_count) - float(min_component_count)) + float(min_component_count)
-    );
+        );
 
 
 
@@ -190,7 +195,7 @@ void TetMesher::action() {
     for (int i = 0; i < F.rows(); i++) {
         bool keep = true;
         for (int j = 0; j < 3; j++) {
-            if (component_count[components[F(i, j)]] <= cutoffComponentCount) {
+            if (componentsCount[components[F(i, j)]] <= cutoffComponentCount) {
                 keep = false;
                 break;
             }
@@ -201,24 +206,42 @@ void TetMesher::action() {
         }
     }
     int nKeep = std::accumulate(
-        component_count.begin(),
-        component_count.end(),
+        componentsCount.begin(),
+        componentsCount.end(),
         0,
         [cutoffComponentCount](int i, int j) {
-            if (j <= cutoffComponentCount) {
-                return i;
-            }
-            else {
-                return i + 1;
-            }
+        if (j <= cutoffComponentCount) {
+            return i;
         }
+        else {
+            return i + 1;
+        }
+    }
     );
 
-    LogInfo("Keeping " << nKeep << " out of " << component_count.size() << " components");
+    LogInfo("Keeping " << nKeep << " out of " << componentsCount.size() << " components");
 
     LogInfo("Largest component of model has " << fcount << " faces and " <<
         newF.maxCoeff() << " vertices");
     newF.conservativeResize(fcount, 3);
+
+    return newF;
+}
+
+
+void TetMesher::action() {
+    std::shared_ptr<const Volume> vol = _inport.getData();
+
+    getProgressBar().show();
+
+    const VolumeRAM* v = vol->getRepresentation<VolumeRAM>();
+
+    Eigen::MatrixXd V;
+    std::tie(V, _F) = marchingCubes(*v);
+
+    std::tie(_components, nComponents) = findConnectedComponents(V, _F);
+
+    Eigen::MatrixXi newF = filterConnectedComponents(_F, _components, nComponents);
 
 
     //std::sort(component_count.begin(), component_count.end());
@@ -230,14 +253,14 @@ void TetMesher::action() {
     //);
 
 
-    Eigen::VectorXd V2 = V.col(2);
-    V.col(2) = V.col(1);
-    V.col(1) = V2;
+    Eigen::VectorXd V2 = std::move(V.col(2));
+    V.col(2) = std::move(V.col(1));
+    V.col(1) = std::move(V2);
 
     std::shared_ptr<Eigen::MatrixXd> TV = std::make_shared<Eigen::MatrixXd>();
     std::shared_ptr<Eigen::MatrixXi> TT = std::make_shared<Eigen::MatrixXi>();
-    *TV = V;
-    *TT = newF;
+    *TV = std::move(V);
+    *TT = std::move(newF);
 
     _triangleVertexOutport.setData(TV);
     _triangleIndexOutport.setData(TT);
@@ -273,6 +296,18 @@ void TetMesher::action() {
     //    });
     //});
 }
+
+void TetMesher::updateFilter() {
+    if (_F.rows() == 0 || _components.rows() == 0 || nComponents.empty()) {
+        return;
+    }
+    Eigen::MatrixXi newF = filterConnectedComponents(_F, _components, nComponents);
+
+    std::shared_ptr<Eigen::MatrixXi> TT = std::make_shared<Eigen::MatrixXi>();
+    *TT = std::move(newF);
+    _triangleIndexOutport.setData(TT);
+}
+
 
 
 //////////////////////////////////////////////////////////////////////////////////////////
