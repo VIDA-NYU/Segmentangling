@@ -44,8 +44,12 @@ private:
     void eventNextParameter();
     //void eventPreviousLevelset();
     //void eventNextLevelset();
-    void diffusionDistances();
-    void updateConstraints();
+    //void diffusionDistances();
+    //void updateConstraints();
+
+    void doSlimSetupStuff();
+
+    void clearInputParameters();
 
     bool isReadyToComputeDiffusion() const;
 
@@ -63,9 +67,6 @@ private:
         Front,
         Back
     };
-
-    SelectionState _currentSelectionState = SelectionState::Front;
-
     std::string selectionStateToString(SelectionState s);
     void updateSelectionStateString();
     StringProperty _selectionStateString;
@@ -76,6 +77,8 @@ private:
     // Input states
     //
     struct InputParams {
+        SelectionState state = SelectionState::Front;
+
         int frontVertexId = -1;
         int backVertexId = -1;
 
@@ -85,7 +88,7 @@ private:
 
         //std::vector<float>::iterator currentLevelset = levelSetOrientations.end();
     };
-
+    std::vector<std::array<int, 2>> pointsFromPoints() const;
     bool isInputParamEmpty(const InputParams& i) const;
 
     std::vector<InputParams> _inputParameters;
@@ -110,6 +113,7 @@ private:
     // Ports
     //
     VolumeInport _inport;
+    VolumeOutport _outport;
 
     VertexInport _trianglesVertexInport;
     TetIndexInport _trianglesTetIndexInport;
@@ -124,8 +128,12 @@ private:
     MeshOutport _meshOutport;
     std::shared_ptr<BasicMesh> _outputSurfaceMesh;
     std::atomic_bool _isOutputMeshDirty = false;
-    MeshOutport _frontSelectionMesh;
-    MeshOutport _backSelectionMesh;
+
+    std::shared_ptr<BasicMesh> _frontSelectionMesh;
+    MeshOutport _frontSelectionMeshPort;
+    std::shared_ptr<BasicMesh> _backSelectionMesh;
+    MeshOutport _backSelectionMeshPort;
+
     struct {
         MeshOutport isoValues;
         std::shared_ptr<BasicMesh> isoMesh;
@@ -149,6 +157,7 @@ private:
     
     // Output 
     IntVec2Property _windowSize;
+    ButtonProperty _rasterizeVolume;
     //struct {
     //    FloatVec3Property normal;
     //    FloatVec3Property position;
@@ -198,7 +207,8 @@ private:
         Eigen::MatrixXi TF;
         Eigen::MatrixXi TT;
         Eigen::MatrixXd TFn;
-        Eigen::MatrixXd texCoords;
+        
+        Eigen::VectorXi components;
     } _skeletonTetra;
 
     struct {
@@ -215,9 +225,11 @@ private:
         Eigen::MatrixXd TV;
         Eigen::MatrixXi TF;
         Eigen::MatrixXd TFn;
+
+        Eigen::VectorXi components;
     } _triangle;
 
-    bool hasTetraMesh() const;
+    bool hasTetraMeshes() const;
 
     //enum class MeshType {
     //    None = 0,
@@ -244,7 +256,9 @@ private:
     // Across-frames members
     //
     int _currentHoverVertexId;
-    bool _readyToSLIM = false;
+    bool _userRequestedSlim = false;
+    bool _constraintValidationFailed = false;
+    bool _selectedInvalidConstraint = false;
     bool _stopInteraction = false;
     
 

@@ -51,6 +51,7 @@ set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/processors/yixinloader.cpp
 
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../fish_deformation/src/utils/utils.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../../fish_deformation/src/utils/rasterizer.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../fish_deformation/src/utils/yixin_loader.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../fish_deformation/src/deformation_constraints.cpp
 
