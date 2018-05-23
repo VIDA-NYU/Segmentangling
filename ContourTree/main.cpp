@@ -15,6 +15,8 @@
 #include <fstream>
 #include <cmath>
 
+#include "ImageData.hpp"
+
 using namespace contourtree;
 
 void preProcessing(QString rawFile, int dimx, int dimy, int dimz) {
@@ -68,7 +70,17 @@ int main(int argc, char *argv[])
     QCoreApplication a(argc, argv);
 
     // need to call preprocessing using the data name
+    QString ipFolder= "/home/harishd/Desktop/Projects/Fish/data/straightening/OSF/Plagiotremus-tapinosoma";
+    QString filePrefix = "Plaagiotremus_tapinosoma_9.9um_2k__rec_Tra";
+    QString ext = "bmp";
+    int stCt = 2;
+    int enCt = 1798;
 
+    QString opFolder = "/home/harishd/Desktop/Projects/Fish/data/straightening/OSF/test";
+    QString opPrefix = "Plaagiotremus_tapinosoma";
+
+    SamplingOutput op = ImageData::writeOutput(ipFolder,filePrefix,stCt,enCt,ext,opFolder,opPrefix,4,true);
+    preProcessing(op.fileName,op.x,op.y,op.z);
     exit(0);
     return a.exec();
 }

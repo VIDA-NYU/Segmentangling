@@ -1,5 +1,5 @@
 QT += core
-QT -= gui
+#QT -= gui
 
 CONFIG += c++11
 
@@ -17,7 +17,8 @@ SOURCES += main.cpp \
     TriMesh.cpp \
     TopologicalFeatures.cpp \
     HyperVolume.cpp \
-    ContourTree.cpp
+    ContourTree.cpp \
+    ImageData.cpp
 
 HEADERS += \
     DisjointSets.hpp \
@@ -33,7 +34,9 @@ HEADERS += \
     TopologicalFeatures.hpp \
     HyperVolume.hpp \
     ContourTree.hpp \
-    test.hpp
+    test.hpp \
+    ImageData.hpp \
+    stb_image.h
 
 # Unix configuration
 unix:!macx{
