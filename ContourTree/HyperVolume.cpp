@@ -1,21 +1,21 @@
 #include "HyperVolume.hpp"
 
 #include <fstream>
-#include <QDebug>
 #include <cassert>
+#include <iostream>
 
 namespace contourtree {
 
-HyperVolume::HyperVolume(const ContourTreeData &ctData, QString partFile) {
+HyperVolume::HyperVolume(const ContourTreeData &ctData, std::string partFile) {
     fnVals = ctData.fnVals.data();
 
-    std::ifstream bin(partFile.toStdString(), std::ios::binary| std::ios::ate);
+    std::ifstream bin(partFile, std::ios::binary| std::ios::ate);
     uint32_t size = bin.tellg();
-    qDebug() << "part size: " << size;
+    std::cout << "part size: " << size << std::endl;
     bin.close();
 
     std::vector<uint32_t> cols(size / sizeof(uint32_t));
-    bin.open(partFile.toStdString(), std::ios::binary);
+    bin.open(partFile, std::ios::binary);
     bin.read((char *)cols.data(),size);
     bin.close();
 

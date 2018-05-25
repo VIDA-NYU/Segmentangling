@@ -1,10 +1,8 @@
 #include "MergeTree.hpp"
 
 #include <chrono>
-#include <QDebug>
-#include <QFile>
-#include <QTextStream>
 #include <fstream>
+#include <iostream>
 
 #if !defined (WIN32)
 #include <parallel/algorithm>
@@ -41,18 +39,18 @@ void MergeTree::computeTree(ScalarFunction* data, TreeType type) {
         break;
 
     default:
-        qDebug() << "Invalid tree type";
+        std::cout << "Invalid tree type" << std::endl;
         assert(false);
     }
 
     en = std::chrono::system_clock::now();
     long time = std::chrono::duration_cast<std::chrono::milliseconds>(en-ct).count();
 
-    qDebug() << "Time taken to compute tree : " << time << "ms";
+    std::cout << "Time taken to compute tree : " << time << "ms" << std::endl;
 }
 
 void MergeTree::setupData() {
-    qDebug() << "setting up data";
+    std::cout << "setting up data" << std::endl;
     maxStar = data->getMaxDegree();
     star.resize(maxStar);
 
@@ -71,7 +69,7 @@ void MergeTree::setupData() {
 }
 
 void MergeTree::orderVertices() {
-    qDebug() << "ordering vertices";
+    std::cout << "ordering vertices" << std::endl;
 #if defined (WIN32)
     std::sort(sv.begin(),sv.end(),Compare(data));
 #else
@@ -80,11 +78,11 @@ void MergeTree::orderVertices() {
 }
 
 void MergeTree::computeJoinTree() {
-    qDebug() << "computing join tree";
+    std::cout << "computing join tree" << std::endl;
     int64_t ct = 0;
     for(int64_t i = noVertices - 1;i >= 0; i --) {
         if(ct % 1000000 == 0) {
-            qDebug() << "processing vertex " <<  ct << " of " << noVertices;
+            std::cout << "processing vertex " <<  ct << " of " << noVertices << std::endl;
         }
         ct ++;
 
@@ -103,11 +101,11 @@ void MergeTree::computeJoinTree() {
 
 
 void MergeTree::computeSplitTree() {
-    qDebug() << "computing split tree";
+    std::cout << "computing split tree" << std::endl;
     int64_t ct = 0;
     for(int64_t i = 0;i < noVertices; i ++) {
         if(ct % 1000000 == 0) {
-            qDebug() << "processing vertex " <<  ct << " of " << noVertices;
+            std::cout << "processing vertex " <<  ct << " of " << noVertices << std::endl;
         }
         ct ++;
 
@@ -124,7 +122,7 @@ void MergeTree::computeSplitTree() {
     newRoot = in;
 }
 
-void MergeTree::output(QString fileName, TreeType tree)
+void MergeTree::output(std::string fileName, TreeType tree)
 {
     if(tree == TypeContourTree) {
         ctree.output(fileName);
@@ -150,19 +148,19 @@ void MergeTree::output(QString fileName, TreeType tree)
     noArcs = noNodes - 1;
 
     // write meta data
-    qDebug() << "Writing meta data";
+    std::cout << "Writing meta data" << std::endl;
     {
-        QFile pr(fileName + ".rg.dat");
-        if(!pr.open(QFile::WriteOnly | QIODevice::Text)) {
-            qDebug() << "could not write to file" << fileName + ".rg.dat";
-        }
-        QTextStream text(&pr);
-        text << noNodes << "\n";
-        text << noArcs << "\n";
+        std::ofstream pr(fileName + ".rg.dat");
+//        if(!pr.open(QFile::WriteOnly | QIODevice::Text)) {
+//            std::cout << "could not write to file" << fileName + ".rg.dat" << std::endl;
+//        }
+//        QTextStream text(&pr);
+        pr << noNodes << "\n";
+        pr << noArcs << "\n";
         pr.close();
     }
 
-    qDebug() << ("Creating required memory!");
+    std::cout << ("Creating required memory!") << std::endl;
     std::vector<int64_t> nodeids(noNodes);
     std::vector<unsigned char> nodefns(noNodes);
     std::vector<char> nodeTypes(noNodes);
@@ -171,7 +169,7 @@ void MergeTree::output(QString fileName, TreeType tree)
     std::vector<int64_t> arcFrom(noNodes);
     std::vector<int64_t> arcTo(noNodes);
 
-    qDebug() << "Generating tree";
+    std::cout << "Generating tree" << std::endl;
     int nct = 0;
     if(newVertex) {
         if(tree == TypeJoinTree){
@@ -264,18 +262,18 @@ void MergeTree::output(QString fileName, TreeType tree)
         assert(arcNo == noArcs);
     }
 
-    qDebug() << "writing tree output";
-    QString rgFile = fileName + ".rg.bin";
-    std::ofstream of(rgFile.toStdString(),std::ios::binary);
+    std::cout << "writing tree output" << std::endl;
+    std::string rgFile = fileName + ".rg.bin";
+    std::ofstream of(rgFile,std::ios::binary);
     of.write((char *)nodeids.data(),nodeids.size() * sizeof(int64_t));
     of.write((char *)nodefns.data(),nodeids.size());
     of.write((char *)nodeTypes.data(),nodeids.size());
     of.write((char *)arcs.data(),arcs.size() * sizeof(int64_t));
     of.close();
 
-    qDebug() << "writing partition";
-    QString rawFile = fileName + ".part.raw";
-    of.open(rawFile.toStdString(), std::ios::binary);
+    std::cout << "writing partition" << std::endl;
+    std::string rawFile = fileName + ".part.raw";
+    of.open(rawFile, std::ios::binary);
     of.write((char *)arcMap.data(), arcMap.size() * sizeof(uint32_t));
     of.close();
 }
@@ -291,7 +289,7 @@ void MergeTree::processVertex(int64_t v) {
         if(data->lessThan(v,tin)) {
             // upperLink
             int64_t comp = nodes.find(tin);
-            set << comp;
+            set.insert(comp);
         }
     }
     if(set.size() == 0) {
@@ -303,7 +301,7 @@ void MergeTree::processVertex(int64_t v) {
         if(set.size() > 1) {
             criticalPts[v] = SADDLE;
         }
-        foreach(int64_t comp, set) {
+        for(int64_t comp: set) {
             int64_t to = cpMap[comp];
             int64_t from = v;
             prev[to] = from;
@@ -325,7 +323,7 @@ void MergeTree::processVertexSplit(int64_t v) {
         if(!(data->lessThan(v,tin))) {
             // lowerLink
             int64_t comp = nodes.find(tin);
-            set << comp;
+            set.insert(comp);
         }
     }
     if(set.size() == 0) {
@@ -337,7 +335,7 @@ void MergeTree::processVertexSplit(int64_t v) {
         if(set.size() > 1) {
             criticalPts[v] = SADDLE;
         }
-        foreach(int64_t comp, set) {
+        for(int64_t comp: set) {
             int64_t from = cpMap[comp];
             int64_t to = v;
             next[from] = to;

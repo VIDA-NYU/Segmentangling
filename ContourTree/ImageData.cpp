@@ -12,7 +12,7 @@
 #include <QDebug>
 #include <QColor>
 
-SamplingOutput ImageData::writeOutput(QString ipFolder, QString filePrefix, int startCt, int endCt, QString ext, QString opFolder, QString opPrefix, int sample, bool writeOriginal) {
+SamplingOutput ImageData::writeOutput(std::string ipFolder, std::string filePrefix, int startCt, int endCt, std::string ext, std::string opFolder, std::string opPrefix, int sample, bool writeOriginal) {
     int ct = 0;
     int tmp = endCt;
     while(tmp != 0) {
@@ -20,19 +20,19 @@ SamplingOutput ImageData::writeOutput(QString ipFolder, QString filePrefix, int 
         tmp /= 10;
     }
 
-    QString origRaw = opFolder + "/" + opPrefix + ".raw";
-    QString origDat = opFolder + "/" + opPrefix + ".dat";
+    std::string origRaw = opFolder + "/" + opPrefix + ".raw";
+    std::string origDat = opFolder + "/" + opPrefix + ".dat";
 
-    QString sampleRaw = opFolder + "/" + opPrefix + "-sample.raw";
-    QString sampleDat = opFolder + "/" + opPrefix + "-sample.dat";
+    std::string sampleRaw = opFolder + "/" + opPrefix + "-sample.raw";
+    std::string sampleDat = opFolder + "/" + opPrefix + "-sample.dat";
 
     std::ofstream origf;
     std::ofstream sampf;
 
     if(writeOriginal) {
-        origf.open(origRaw.toStdString(),std::ios::binary);
+        origf.open(origRaw,std::ios::binary);
     }
-    sampf.open(sampleRaw.toStdString(), std::ios::binary);
+    sampf.open(sampleRaw, std::ios::binary);
 
     size_t size = 0;
     std::vector<int> odata;
@@ -45,8 +45,8 @@ SamplingOutput ImageData::writeOutput(QString ipFolder, QString filePrefix, int 
         for(int j = 0;j < sample;j ++) {
             int fno = i + j;
             if(fno <= endCt) {
-                QString fileName = ipFolder + "/" + filePrefix + QString::number(fno).rightJustified(ct,'0') + "." + ext;
-                QImage img(fileName);
+                std::string fileName = (ipFolder + "/" + filePrefix + QString::number(fno).rightJustified(ct,'0').toStdString() + "." + ext);
+                QImage img(QString(fileName.c_str()));
 
                 if(size == 0) {
                     size = img.width() * img.height();
@@ -102,9 +102,9 @@ SamplingOutput ImageData::writeOutput(QString ipFolder, QString filePrefix, int 
         origf.close();
 
         std::ofstream odat;
-        odat.open(origDat.toStdString());
-        QString nameOnly = opPrefix + ".raw";
-        odat << "RawFile: " << nameOnly.toStdString() << std::endl;
+        odat.open(origDat);
+        std::string nameOnly = opPrefix + ".raw";
+        odat << "RawFile: " << nameOnly << std::endl;
         odat << "Resolution: " << ix << " " << iy << " " << iz << std::endl;
         odat << "Format: UINT8" << std::endl;
         odat.close();
@@ -113,9 +113,9 @@ SamplingOutput ImageData::writeOutput(QString ipFolder, QString filePrefix, int 
     sampf.close();
 
     std::ofstream sdat;
-    sdat.open(sampleDat.toStdString());
-    QString nameOnly = opPrefix + "-sample.raw";
-    sdat << "RawFile: " << nameOnly.toStdString() << std::endl;
+    sdat.open(sampleDat);
+    std::string nameOnly = opPrefix + "-sample.raw";
+    sdat << "RawFile: " << nameOnly << std::endl;
     sdat << "Resolution: " << sx << " " << sy << " " << sz << std::endl;
     sdat << "Format: UINT8" << std::endl;
     sdat.close();
@@ -124,7 +124,7 @@ SamplingOutput ImageData::writeOutput(QString ipFolder, QString filePrefix, int 
     qDebug() << "sample size" << sx << sy << sz;
 
     SamplingOutput ret;
-    ret.fileName = sampleRaw;
+    ret.fileName = std::string(opFolder + "/" + opPrefix + "-sample");
     ret.x = sx;
     ret.y = sy;
     ret.z = sz;

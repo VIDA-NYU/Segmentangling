@@ -2,8 +2,8 @@
 #define TOPOLOGICALFEATURES_HPP
 
 #include "SimplifyCT.hpp"
-#include <QString>
-#include <QSet>
+#include <string>
+#include <set>
 
 namespace contourtree {
 
@@ -17,7 +17,7 @@ class TopologicalFeatures
 public:
     TopologicalFeatures();
 
-    void loadData(QString dataLocation, bool partition = false);
+    void loadData(std::string dataLocation, bool partition = false);
     std::vector<Feature> getArcFeatures(int topk = -1, float th = 0);
     std::vector<Feature> getPartitionedExtremaFeatures(int topk = -1, float th = 0);
     std::vector<Feature> getFeatures(int topk = -1, float th = 0, float secondary = 1);
@@ -32,7 +32,7 @@ public:
     SimplifyCT sim;
 
 private:
-    void addFeature(SimplifyCT &sim, uint32_t bno, std::vector<Feature> &features, QSet<size_t> &featureSet);
+    void addFeature(SimplifyCT &sim, uint32_t bno, std::vector<Feature> &features, std::set<size_t> &featureSet);
 
 };
 

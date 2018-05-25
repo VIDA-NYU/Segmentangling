@@ -1,11 +1,11 @@
 #ifndef IMAGEDATA_HPP
 #define IMAGEDATA_HPP
 
-#include <QString>
+#include <string>
 
 
 struct SamplingOutput{
-    QString fileName;
+    std::string fileName;
     int x,y,z;
 };
 
@@ -14,7 +14,7 @@ class ImageData
 public:
     ImageData() {}
 
-    static SamplingOutput writeOutput(QString ipFolder, QString filePrefix, int startCt, int endCt, QString ext, QString opFolder, QString opPrefix, int sample, bool writeOriginal = true);
+    static SamplingOutput writeOutput(std::string ipFolder, std::string filePrefix, int startCt, int endCt, std::string ext, std::string opFolder, std::string opPrefix, int sample, bool writeOriginal = true);
 };
 
 #endif // IMAGEDATA_HPP

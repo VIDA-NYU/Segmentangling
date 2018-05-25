@@ -1,7 +1,7 @@
 #ifndef CONTOURTREE_HPP
 #define CONTOURTREE_HPP
 
-#include <QString>
+#include <string>
 #include <vector>
 
 namespace contourtree {
@@ -22,7 +22,7 @@ public:
 
     void setup(const MergeTree * tree);
     void computeCT();
-    void output(QString fileName);
+    void output(std::string fileName);
 
 private:
     void remove(int64_t xi, std::vector<Node>& nodeArray);

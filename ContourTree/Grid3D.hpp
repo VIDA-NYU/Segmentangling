@@ -2,9 +2,10 @@
 #define GRID3D_H
 
 #include "ScalarFunction.hpp"
-#include <QSet>
 #include <stdint.h>
 #include <vector>
+#include <set>
+#include <string>
 
 namespace contourtree {
 
@@ -20,12 +21,12 @@ public:
 public:
     int getMaxDegree();
     int getVertexCount();
-    int getStar(int64_t v, QVector<int64_t> &star);
+    int getStar(int64_t v, std::vector<int64_t> &star);
     bool lessThan(int64_t v1, int64_t v2);
     unsigned char getFunctionValue(int64_t v);
 
 public:
-    void loadGrid(QString fileName);
+    void loadGrid(std::string fileName);
 
 protected:
     void updateStars();
@@ -33,7 +34,7 @@ protected:
 public:
     int dimx, dimy, dimz;
     int nv;
-    QVector<Tet> tets;
+    std::vector<Tet> tets;
     int starin[14][3];
     int64_t star[14];
     std::vector<unsigned char> fnVals;

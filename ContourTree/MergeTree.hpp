@@ -5,8 +5,9 @@
 #include "ScalarFunction.hpp"
 #include <vector>
 #include "DisjointSets.hpp"
-#include <QSet>
 #include "ContourTree.hpp"
+#include <set>
+#include <string>
 
 namespace contourtree {
 
@@ -28,7 +29,7 @@ public:
     void computeTree(ScalarFunction* data, TreeType type);
     void computeJoinTree();
     void computeSplitTree();
-    void output(QString fileName, TreeType tree);
+    void output(std::string fileName, TreeType tree);
 
 protected:
     void setupData();
@@ -50,11 +51,11 @@ public:
     bool newVertex;
     int64_t newRoot;
 
-    QSet<int64_t> set;
+    std::set<int64_t> set;
     ContourTree ctree;
 
 private:
-    QVector<int64_t> star;
+    std::vector<int64_t> star;
 };
 
 }

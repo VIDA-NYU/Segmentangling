@@ -1,10 +1,8 @@
 #include "SimplifyCT.hpp"
 
 #include <cassert>
-#include <QDebug>
-#include <QFile>
 #include <fstream>
-#include <QTextStream>
+#include <iostream>
 
 namespace contourtree {
 
@@ -121,8 +119,8 @@ void SimplifyCT::removeArc(uint32_t ano) {
         // maximum
         mergedVertex = from;
     }
-    nodes[from].next.removeAll(ano);
-    nodes[to].prev.removeAll(ano);
+    nodes[from].next.erase(std::remove(nodes[from].next.begin(), nodes[from].next.end(), ano), nodes[from].next.end());
+    nodes[to].next.erase(std::remove(nodes[to].next.begin(), nodes[to].next.end(), ano), nodes[to].next.end());
     removed[ano] = true;
 
     vArray[mergedVertex].push_back(ano);
@@ -172,7 +170,8 @@ void SimplifyCT::mergeVertex(uint32_t v) {
         assert(branches[ch].parent == rem);
         branches[ch].parent = a;
     }
-    branches[a].arcs << branches[rem].arcs;
+//    branches[a].arcs << branches[rem].arcs;
+    branches[a].arcs.insert(branches[a].arcs.end(),branches[rem].arcs.begin(),branches[rem].arcs.end());
     for(int i = 0;i < vArray[v].size();i ++) {
         uint32_t aa = vArray[v].at(i);
         branches[a].children.push_back(aa);
@@ -182,10 +181,10 @@ void SimplifyCT::mergeVertex(uint32_t v) {
 }
 
 void SimplifyCT::simplify(SimFunction *simFn) {
-    qDebug() << "init";
+    std::cout << "init" << std::endl;
     initSimplification(simFn);
 
-    qDebug() << "going over priority queue";
+    std::cout << "going over priority queue" << std::endl;
     while(queue.size() > 0) {
         uint32_t ano = queue.top();
         queue.pop();
@@ -203,7 +202,7 @@ void SimplifyCT::simplify(SimFunction *simFn) {
             }
         }
     }
-    qDebug() << "pass over removed";
+    std::cout << "pass over removed" << std::endl;
     int root = 0;
     for(int i = 0;i < removed.size();i ++) {
         if(!removed[i]) {
@@ -216,10 +215,10 @@ void SimplifyCT::simplify(SimFunction *simFn) {
 
 
 void SimplifyCT::simplify(const std::vector<uint32_t> &order, int topk, float th, const std::vector<float> &wts) {
-    qDebug() << "init";
+    std::cout << "init" << std::endl;
     initSimplification(NULL);
 
-    qDebug() << "going over order queue";
+    std::cout << "going over order queue" << std::endl;
     for(int i = 0;i < order.size();i ++) {
         inq[order.at(i)] = true;
     }
@@ -228,7 +227,7 @@ void SimplifyCT::simplify(const std::vector<uint32_t> &order, int topk, float th
         for(int i = 0;i < ct;i ++) {
             uint32_t ano = order.at(i);
             if(!isCandidate(branches[ano])) {
-                qDebug() << "failing candidate test";
+                std::cout << "failing candidate test" << std::endl;
                 assert(false);
             }
             inq[ano] = false;
@@ -238,7 +237,7 @@ void SimplifyCT::simplify(const std::vector<uint32_t> &order, int topk, float th
         for(int i = 0;i < order.size() - 1;i ++) {
             uint32_t ano = order.at(i);
             if(!isCandidate(branches[ano])) {
-                qDebug() << "failing candidate test";
+                std::cout << "failing candidate test" << std::endl;
                 assert(false);
             }
             float fn = wts.at(i);
@@ -251,15 +250,15 @@ void SimplifyCT::simplify(const std::vector<uint32_t> &order, int topk, float th
     }
 }
 
-void SimplifyCT::outputOrder(QString fileName) {
-    qDebug() << "Writing meta data";
+void SimplifyCT::outputOrder(std::string fileName) {
+    std::cout << "Writing meta data" << std::endl;
     {
-        QFile pr(fileName + ".order.dat");
-        if(!pr.open(QFile::WriteOnly | QIODevice::Text)) {
-            qDebug() << "could not write to file" << fileName + ".order.dat";
-        }
-        QTextStream text(&pr);
-        text << order.size() << "\n";
+        std::ofstream pr(fileName + ".order.dat");
+//        if(!pr.open(QFile::WriteOnly | QIODevice::Text)) {
+//            std::cout << "could not write to file" << fileName + ".order.dat";
+//        }
+//        QTextStream text(&pr);
+        pr << order.size() << "\n";
         pr.close();
     }
     std::vector<float> wts;
@@ -281,9 +280,9 @@ void SimplifyCT::outputOrder(QString fileName) {
         wts[i] /= maxWt;
     }
 
-    qDebug() << "writing tree output";
-    QString binFile = fileName + ".order.bin";
-    std::ofstream of(binFile.toStdString(),std::ios::binary);
+    std::cout << "writing tree output" << std::endl;
+    std::string binFile = fileName + ".order.bin";
+    std::ofstream of(binFile,std::ios::binary);
     of.write((char *)order.data(),order.size() * sizeof(uint32_t));
     of.write((char *)wts.data(),wts.size() * sizeof(float));
 //    of.write((char *)arcs.data(),arcs.size() * sizeof(uint32_t));

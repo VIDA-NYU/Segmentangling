@@ -1,5 +1,4 @@
 #include <QCoreApplication>
-#include <QDebug>
 
 #include "DisjointSets.hpp"
 #include <iostream>
@@ -13,35 +12,33 @@
 #include "TopologicalFeatures.hpp"
 #include "HyperVolume.hpp"
 #include <fstream>
+#include <iostream>
 #include <cmath>
 
 #include "ImageData.hpp"
 
 using namespace contourtree;
 
-void preProcessing(QString rawFile, int dimx, int dimy, int dimz) {
+void preProcessing(std::string dataName, int dimx, int dimy, int dimz) {
     // Assumes type to be unsigned char
 
     std::chrono::time_point<std::chrono::system_clock> start, end;
     Grid3D grid(dimx,dimy,dimz);
 
-    QString data = rawFile;
-    if(rawFile.endsWith(".raw")) {
-        data = rawFile.left(rawFile.length() - 4);
-    }
+    std::string data = dataName;
 
     start = std::chrono::system_clock::now();
     grid.loadGrid(data + ".raw");
     MergeTree ct;
     contourtree::TreeType tree = TypeJoinTree;
-    qDebug() << "computing join tree";
+    std::cout << "computing join tree" << std::endl;
     ct.computeTree(&grid,tree);
     end = std::chrono::system_clock::now();
-    qDebug() << "Time to compute contour tree: " << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() << "ms\n";
+    std::cout << "Time to compute contour tree: " << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() << "ms\n";
     ct.output(data, tree);
 
 
-    qDebug() << "creating hierarchical segmentation";
+    std::cout << "creating hierarchical segmentation" << std::endl;
     // now simplify and store simplification hierarchy
     start = std::chrono::system_clock::now();
     ContourTreeData ctdata;
@@ -58,10 +55,10 @@ void preProcessing(QString rawFile, int dimx, int dimy, int dimz) {
     }
     sim.simplify(simFn);
     end = std::chrono::system_clock::now();
-    qDebug() << "Time to simplify: " << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() << "ms\n";
+    std::cout << "Time to simplify: " << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() << "ms\n";
 
     sim.outputOrder(data);
-    qDebug() << "done";
+    std::cout << "done" << std::endl;
 }
 
 
@@ -70,14 +67,14 @@ int main(int argc, char *argv[])
     QCoreApplication a(argc, argv);
 
     // need to call preprocessing using the data name
-    QString ipFolder= "/home/harishd/Desktop/Projects/Fish/data/straightening/OSF/Plagiotremus-tapinosoma";
-    QString filePrefix = "Plaagiotremus_tapinosoma_9.9um_2k__rec_Tra";
-    QString ext = "bmp";
+    std::string ipFolder= "/home/harishd/Desktop/Projects/Fish/data/straightening/OSF/Plagiotremus-tapinosoma";
+    std::string filePrefix = "Plaagiotremus_tapinosoma_9.9um_2k__rec_Tra";
+    std::string ext = "bmp";
     int stCt = 2;
     int enCt = 1798;
 
-    QString opFolder = "/home/harishd/Desktop/Projects/Fish/data/straightening/OSF/test";
-    QString opPrefix = "Plaagiotremus_tapinosoma";
+    std::string opFolder = "/home/harishd/Desktop/Projects/Fish/data/straightening/OSF/test";
+    std::string opPrefix = "Plaagiotremus_tapinosoma";
 
     SamplingOutput op = ImageData::writeOutput(ipFolder,filePrefix,stCt,enCt,ext,opFolder,opPrefix,4,true);
     preProcessing(op.fileName,op.x,op.y,op.z);

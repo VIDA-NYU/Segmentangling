@@ -2,7 +2,7 @@
 
 #include <cassert>
 #include <fstream>
-#include <QString>
+#include <string>
 
 namespace contourtree {
 
@@ -21,7 +21,7 @@ int Grid3D::getVertexCount() {
     return nv;
 }
 
-int Grid3D::getStar(int64_t v, QVector<int64_t> &star) {
+int Grid3D::getStar(int64_t v, std::vector<int64_t> &star) {
     int z = v / (dimx * dimy);
     int rem = v % (dimx * dimy);
     int y = rem / dimx;
@@ -55,8 +55,8 @@ unsigned char Grid3D::getFunctionValue(int64_t v) {
     return this->fnVals[v];
 }
 
-void Grid3D::loadGrid(QString fileName) {
-    std::ifstream ip(fileName.toStdString(), std::ios::binary);
+void Grid3D::loadGrid(std::string fileName) {
+    std::ifstream ip(fileName, std::ios::binary);
     this->fnVals.resize(nv);
     ip.read((char *)fnVals.data(),nv);
     ip.close();
@@ -80,7 +80,7 @@ void Grid3D::updateStars() {
             loc[ordering[i][j]] ++;
             tet.v[j + 1] = index(loc[0],loc[1],loc[2]);
         }
-        tets << tet;
+        tets.push_back(tet);
     }
 
 
@@ -90,7 +90,7 @@ void Grid3D::updateStars() {
     int z = 1;
     int v = index(1,1,1);
 
-    QSet<int64_t> unique;
+    std::set<int64_t> unique;
     for(int xx = -1;xx < 1;xx ++) {
         int _x = x + xx;
         for(int yy = -1;yy < 1;yy ++) {
@@ -109,7 +109,7 @@ void Grid3D::updateStars() {
                     if(in != -1)
                     for(int j = 0;j < 4;j ++) {
                         if(j != in) {
-                            unique << (tets[i].v[j] + vv);
+                            unique.insert(tets[i].v[j] + vv);
                         }
                     }
                 }
@@ -119,7 +119,7 @@ void Grid3D::updateStars() {
     assert(unique.size() == 14);
 
     int sct = 0;
-    foreach(int64_t adj, unique) {
+    for(int64_t adj: unique) {
         z = adj / (dimx * dimy);
         int rem = adj % (dimx * dimy);
         y = rem / dimx;

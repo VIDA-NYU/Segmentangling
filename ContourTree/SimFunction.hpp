@@ -1,7 +1,7 @@
 #ifndef SIMFUNCTION_HPP
 #define SIMFUNCTION_HPP
 
-#include <QVector>
+#include <vector>
 #include <stdint.h>
 
 namespace contourtree {
@@ -9,10 +9,10 @@ namespace contourtree {
 struct Branch {
     uint32_t from;
     uint32_t to;
-    QVector<uint32_t> arcs;
+    std::vector<uint32_t> arcs;
 
     uint32_t parent;
-    QVector<uint32_t> children;
+    std::vector<uint32_t> children;
 };
 
 class SimFunction
