@@ -23,14 +23,14 @@ void preProcessing(std::string dataName, int dimx, int dimy, int dimz) {
     // Assumes type to be unsigned char
 
     std::chrono::time_point<std::chrono::system_clock> start, end;
-    Grid3D grid(dimx,dimy,dimz);
+    Grid3D<float> grid(dimx,dimy,dimz);
 
     std::string data = dataName;
 
     start = std::chrono::system_clock::now();
     grid.loadGrid(data + ".raw");
     MergeTree ct;
-    contourtree::TreeType tree = TypeJoinTree;
+    contourtree::TreeType tree = TypeContourTree;
     std::cout << "computing join tree" << std::endl;
     ct.computeTree(&grid,tree);
     end = std::chrono::system_clock::now();
@@ -46,7 +46,7 @@ void preProcessing(std::string dataName, int dimx, int dimy, int dimz) {
 
     SimplifyCT sim;
     sim.setInput(&ctdata);
-    bool persistence = false;
+    bool persistence = true;
     SimFunction *simFn;
     if(persistence) {
         simFn = new Persistence(ctdata);
@@ -66,18 +66,7 @@ int main(int argc, char *argv[])
 {
     QCoreApplication a(argc, argv);
 
-    // need to call preprocessing using the data name
-    std::string ipFolder= "/home/harishd/Desktop/Projects/Fish/data/straightening/OSF/Plagiotremus-tapinosoma";
-    std::string filePrefix = "Plaagiotremus_tapinosoma_9.9um_2k__rec_Tra";
-    std::string ext = "bmp";
-    int stCt = 2;
-    int enCt = 1798;
-
-    std::string opFolder = "/home/harishd/Desktop/Projects/Fish/data/straightening/OSF/test";
-    std::string opPrefix = "Plaagiotremus_tapinosoma";
-
-    SamplingOutput op = ImageData::writeOutput(ipFolder,filePrefix,stCt,enCt,ext,opFolder,opPrefix,4,true);
-    preProcessing(op.fileName,op.x,op.y,op.z);
+    preProcessing("/store/tmp/ct/CTA-cardio",64,64,41);
     exit(0);
     return a.exec();
 }

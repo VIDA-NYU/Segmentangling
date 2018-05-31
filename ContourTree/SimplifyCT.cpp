@@ -207,7 +207,7 @@ void SimplifyCT::simplify(SimFunction *simFn) {
     int root = 0;
     for(int i = 0;i < removed.size();i ++) {
         if(!removed[i]) {
-            assert(root == 0);
+//            assert(root == 0);
             order.push_back(i);
             root ++;
         }
@@ -263,15 +263,15 @@ void SimplifyCT::outputOrder(std::string fileName) {
         pr.close();
     }
     std::vector<float> wts;
-    float pwt = 0;
+//    float pwt = 0;
     for(size_t i = 0;i < order.size();i ++) {
         uint32_t ano = order.at(i);
         float val = this->simFn->getBranchWeight(ano);
         wts.push_back(val);
-        if(i > 0) {
-            assert(pwt <= val);
-        }
-        pwt = val;
+//        if(i > 0) {
+//            assert(pwt <= val);
+//        }
+//        pwt = val;
     }
 
     // normalize weights

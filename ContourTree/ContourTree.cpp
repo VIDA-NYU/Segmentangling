@@ -109,7 +109,7 @@ void ContourTree::output(std::string fileName) {
     nodesSplit.shrink_to_fit();
 
     std::vector<int64_t> nodeids;
-    std::vector<unsigned char> nodefns;
+    std::vector<scalar_t> nodefns;
     std::vector<char> nodeTypes;
     std::vector<int64_t> arcs;
 
@@ -170,7 +170,7 @@ void ContourTree::output(std::string fileName) {
     std::string rgFile = fileName + ".rg.bin";
     std::ofstream of(rgFile,std::ios::binary);
     of.write((char *)nodeids.data(),nodeids.size() * sizeof(int64_t));
-    of.write((char *)nodefns.data(),nodeids.size());
+    of.write((char *)nodefns.data(),nodeids.size() * sizeof(scalar_t));
     of.write((char *)nodeTypes.data(),nodeids.size());
     of.write((char *)arcs.data(),arcs.size() * sizeof(int64_t));
     of.close();

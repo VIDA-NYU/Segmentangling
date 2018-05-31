@@ -162,7 +162,7 @@ void MergeTree::output(std::string fileName, TreeType tree)
 
     std::cout << ("Creating required memory!") << std::endl;
     std::vector<int64_t> nodeids(noNodes);
-    std::vector<unsigned char> nodefns(noNodes);
+    std::vector<scalar_t> nodefns(noNodes);
     std::vector<char> nodeTypes(noNodes);
     std::vector<int64_t> arcs(noArcs * 2);
 
@@ -171,10 +171,12 @@ void MergeTree::output(std::string fileName, TreeType tree)
 
     std::cout << "Generating tree" << std::endl;
     int nct = 0;
+    scalar_t minf = data->getFunctionValue(sv[0]);
+    scalar_t maxf = data->getFunctionValue(sv[noVertices-1]);
     if(newVertex) {
         if(tree == TypeJoinTree){
             nodeids[nct] = noVertices;
-            nodefns[nct] = 0;
+            nodefns[nct] = minf;
             nodeTypes[nct] = MINIMUM;
             nct ++;
         }
@@ -190,7 +192,7 @@ void MergeTree::output(std::string fileName, TreeType tree)
     if(newVertex) {
         if(tree != TypeJoinTree){
             nodeids[nct] = noVertices;
-            nodefns[nct] = 255;
+            nodefns[nct] = maxf;
             nodeTypes[nct] = MAXIMUM;
             nct ++;
         }
@@ -266,7 +268,7 @@ void MergeTree::output(std::string fileName, TreeType tree)
     std::string rgFile = fileName + ".rg.bin";
     std::ofstream of(rgFile,std::ios::binary);
     of.write((char *)nodeids.data(),nodeids.size() * sizeof(int64_t));
-    of.write((char *)nodefns.data(),nodeids.size());
+    of.write((char *)nodefns.data(),nodeids.size() * sizeof(scalar_t));
     of.write((char *)nodeTypes.data(),nodeids.size());
     of.write((char *)arcs.data(),arcs.size() * sizeof(int64_t));
     of.close();

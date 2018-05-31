@@ -10,7 +10,6 @@ TEMPLATE = app
 
 SOURCES += main.cpp \
     MergeTree.cpp \
-    Grid3D.cpp \
     SimplifyCT.cpp \
     ContourTreeData.cpp \
     Persistence.cpp \

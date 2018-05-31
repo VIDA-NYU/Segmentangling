@@ -37,8 +37,8 @@ bool TriMesh::lessThan(int64_t v1, int64_t v2) {
     return false;
 }
 
-unsigned char TriMesh::getFunctionValue(int64_t v) {
-    return this->fnVals[v];
+scalar_t TriMesh::getFunctionValue(int64_t v) {
+    return (scalar_t) this->fnVals[v];
 }
 
 void TriMesh::loadData(std::string fileName)

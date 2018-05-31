@@ -12,6 +12,8 @@ const char SADDLE = 4;
 // JoinTree -> maxima and SplitTree -> minima
 enum TreeType {TypeJoinTree, TypeSplitTree, TypeContourTree};
 
+typedef float scalar_t;
+
 }
 
 #endif // CONSTANTS_H

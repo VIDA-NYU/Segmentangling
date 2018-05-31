@@ -27,7 +27,7 @@ void ContourTreeData::loadBinFile(std::string fileName) {
     std::cout << noNodes << " " << noArcs << std::endl;
 
     std::vector<int64_t> nodeids(noNodes);
-    std::vector<unsigned char> nodefns(noNodes);
+    std::vector<scalar_t> nodefns(noNodes);
     std::vector<char> nodeTypes(noNodes);
     std::vector<int64_t> arcs(noArcs * 2);
 
@@ -35,7 +35,7 @@ void ContourTreeData::loadBinFile(std::string fileName) {
     std::string rgFile = fileName + ".rg.bin";
     std::ifstream ip(rgFile, std::ios::binary);
     ip.read((char *)nodeids.data(),nodeids.size() * sizeof(int64_t));
-    ip.read((char *)nodefns.data(),nodeids.size());
+    ip.read((char *)nodefns.data(),nodeids.size() * sizeof(scalar_t));
     ip.read((char *)nodeTypes.data(),nodeids.size());
     ip.read((char *)arcs.data(),arcs.size() * sizeof(int64_t));
     ip.close();
@@ -58,7 +58,7 @@ void ContourTreeData::loadTxtFile(std::string fileName) {
     ip >> noArcs;
 
     std::vector<int64_t> nodeids(noNodes);
-    std::vector<unsigned char> nodefns(noNodes);
+    std::vector<scalar_t> nodefns(noNodes);
     std::vector<char> nodeTypes(noNodes);
     std::vector<int64_t> arcs(noArcs * 2);
 
@@ -81,7 +81,7 @@ void ContourTreeData::loadTxtFile(std::string fileName) {
             t = REGULAR;
         }
         nodeids[i] = v;
-        nodefns[i] = (unsigned char)(fn);
+        nodefns[i] = (scalar_t)(fn);
         nodeTypes[i] = t;
     }
     for(size_t i = 0;i < noArcs;i ++) {
@@ -98,17 +98,19 @@ void ContourTreeData::loadTxtFile(std::string fileName) {
     this->loadData(nodeids,nodefns, nodeTypes,arcs);
 }
 
-void ContourTreeData::loadData(const std::vector<int64_t> &nodeids, const std::vector<unsigned char> &nodefns, const std::vector<char> &nodeTypes, const std::vector<int64_t> &iarcs) {
+void ContourTreeData::loadData(const std::vector<int64_t> &nodeids, const std::vector<scalar_t> &nodefns, const std::vector<char> &nodeTypes, const std::vector<int64_t> &iarcs) {
     nodes.resize(noNodes);
     nodeVerts.resize(noNodes);
     fnVals.resize(noNodes);
     type.resize(noNodes);
     arcs.resize(noArcs);
 
+    scalar_t minf = nodefns[0];
+    scalar_t maxf = nodefns[noNodes - 1];
     for(uint32_t i = 0;i < noNodes;i ++) {
+        assert(nodefns[i] >= minf && nodefns[i] <= maxf);
         nodeVerts[i] = nodeids[i];
-        // TODO hard coding again.
-        fnVals[i] = (float)(nodefns[i]) / 255.;
+        fnVals[i] = (float)(nodefns[i] - minf) / (maxf - minf);
         type[i] = nodeTypes[i];
         nodeMap[nodeVerts[i]] = i;
     }
