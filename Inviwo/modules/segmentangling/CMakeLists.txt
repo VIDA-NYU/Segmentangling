@@ -13,6 +13,7 @@ set(HEADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/processors/straightener.h
     ${CMAKE_CURRENT_SOURCE_DIR}/processors/tetmesher.h
     ${CMAKE_CURRENT_SOURCE_DIR}/processors/topoppparameterer.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/processors/volumestopper.h
     ${CMAKE_CURRENT_SOURCE_DIR}/processors/volumecollectiongenerator.h
     ${CMAKE_CURRENT_SOURCE_DIR}/processors/volumeexportgenerator.h
     ${CMAKE_CURRENT_SOURCE_DIR}/processors/volumesliceoverlay.h
@@ -45,6 +46,7 @@ set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/processors/straightener.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/processors/tetmesher.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/processors/topoppparameterer.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/processors/volumestopper.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/processors/volumecollectiongenerator.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/processors/volumeexportgenerator.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/processors/volumesliceoverlay.cpp
@@ -65,6 +67,23 @@ set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../ContourTree/SimplifyCT.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../ContourTree/TopologicalFeatures.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../ContourTree/TriMesh.cpp
+
+    ${CMAKE_CURRENT_SOURCE_DIR}/ext/quartet/src/predicates.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ext/quartet/src/geometry_queries.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ext/quartet/src/sdf.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ext/quartet/src/trimesh.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ext/quartet/src/tet_mesh.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ext/quartet/src/feature.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ext/quartet/src/read_obj.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ext/quartet/src/tet_quality.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ext/quartet/src/match_features.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ext/quartet/src/optimize_tet_mesh.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ext/quartet/src/make_signed_distance.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ext/quartet/src/make_tet_mesh.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ext/quartet.cpp
+
+    ${CMAKE_CURRENT_SOURCE_DIR}/ext/quartet/src/main.cpp
+
 )
 ivw_group("Source Files" ${SOURCE_FILES})
 
@@ -109,7 +128,11 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/../../../
 set(ENV{LIBIGLROOT} ${CMAKE_CURRENT_SOURCE_DIR}/../../../fish_deformation/external/libigl)
 find_package(LIBIGL REQUIRED QUIET)
 
-target_include_directories(inviwo-module-segmentangling PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/ext/qhull/src")
+target_include_directories(inviwo-module-segmentangling PUBLIC
+    "${CMAKE_CURRENT_SOURCE_DIR}/ext/qhull/src"
+    "${CMAKE_CURRENT_SOURCE_DIR}/ext/quartet/src"
+)
+
 target_include_directories(inviwo-module-segmentangling PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../fish_deformation/src
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../fish_deformation/src/utils
@@ -120,7 +143,6 @@ target_include_directories(inviwo-module-segmentangling PUBLIC
     "C:/ab7512/SuiteSparse/include"
     "C:/ab7512/SuiteSparse/CHOLMOD/include"
     "C:/ab7512/OpenBLAS-v0.2.19-Win64-int32/include"
-
 )
 # target_link_libraries(inviwo-module-segmentangling PUBLIC igl::core igl::opengl_glfw igl::opengl_glfw_imgui)
 target_link_libraries(inviwo-module-segmentangling PUBLIC igl::core)

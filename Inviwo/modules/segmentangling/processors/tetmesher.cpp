@@ -27,6 +27,17 @@
 
 #include <TetWild.h>
 
+#include "make_tet_mesh.h"
+#include "make_signed_distance.h"
+#include "read_obj.h"
+#include "feature.h"
+#include "trimesh.h"
+#include <sstream>
+#include <fstream>
+#include <cstdio>
+#include <cstring>
+#include <ctime>
+
 namespace inviwo {
 
 TetMesher::TetMesher()
@@ -39,6 +50,8 @@ TetMesher::TetMesher()
     //, _volumeFilename("_volumeFilename", "Volume Filename")
     , _componentCutoff("_componentCutoff", "Component Cutoff Ratio", 0.75f, 0.f, 1.f)
     , _action("_action", "Go")
+    , _dilationOrEpsilonSize("_dilationSize", "Dilation Size")
+    , _useGTet("_useGTet", "Use GTet? (Quartet else)")
 {
     addPort(_inport);
     addPort(_triangleVertexOutport);
@@ -47,7 +60,8 @@ TetMesher::TetMesher()
     addPort(_vertexOutport);
     addPort(_tetIndexOutport);
 
-
+    addProperty(_dilationOrEpsilonSize);
+    addProperty(_useGTet);
     //addProperty(_volumeFilename);
 
     _action.onChange([this]() { action(); });
@@ -259,8 +273,8 @@ void TetMesher::action() {
 
     std::shared_ptr<Eigen::MatrixXd> TV = std::make_shared<Eigen::MatrixXd>();
     std::shared_ptr<Eigen::MatrixXi> TT = std::make_shared<Eigen::MatrixXi>();
-    *TV = std::move(V);
-    *TT = std::move(newF);
+    *TV = V;
+    *TT = newF;
 
     _triangleVertexOutport.setData(TV);
     _triangleIndexOutport.setData(TT);
@@ -271,30 +285,113 @@ void TetMesher::action() {
     getProgressBar().updateProgress(1.f);
 
 
-    //dispatchPool([this, V, newF]() {
-    //    //
-    //    // gtet
-    //    //
-    //    args.is_quiet = true;
-    //    args.max_pass = 5;
-    //    args.filter_energy = 200;
-    //    args.i_epsilon = 100;
-    //    args.i_dd = 100;
+    if (_useGTet) {
+        dispatchPool([this, V, newF]() {
+            //
+            // gtet
+            //
+            args.is_quiet = true;
+            args.max_pass = 5;
+            args.filter_energy = 200;
+            args.i_epsilon = _dilationOrEpsilonSize;
+            args.i_dd = 100;
+            args.i_ideal_edge_length = 10;
 
-    //    std::shared_ptr<Eigen::MatrixXd> TV = std::make_shared<Eigen::MatrixXd>();
-    //    std::shared_ptr<Eigen::MatrixXi> TT = std::make_shared<Eigen::MatrixXi>();
-    //    TetWild::gtet(
-    //        V,
-    //        newF,
-    //        *TV,
-    //        *TT
-    //    );
+            std::shared_ptr<Eigen::MatrixXd> TV = std::make_shared<Eigen::MatrixXd>();
+            std::shared_ptr<Eigen::MatrixXi> TT = std::make_shared<Eigen::MatrixXi>();
+            TetWild::gtet(
+                V,
+                newF,
+                *TV,
+                *TT
+            );
 
-    //    dispatchFront([this, TV, TT]() {
-    //        _vertexOutport.setData(TV);
-    //        _tetIndexOutport.setData(TT);
-    //    });
-    //});
+            dispatchFront([this, TV, TT]() {
+                _vertexOutport.setData(TV);
+                _tetIndexOutport.setData(TT);
+            });
+        });
+    }
+    else {
+        // Use Quartet
+
+
+        std::vector<Vec3f> surf_x;
+        for (int i = 0; i < V.rows(); ++i) {
+            surf_x.push_back(
+                Vec3f(V(i, 0), V(i, 1), V(i, 2))
+            );
+        }
+
+        std::vector<Vec3i> surf_tri;
+        for (int i = 0; i < newF.rows(); ++i) {
+            surf_tri.push_back(
+                Vec3i(newF(i, 0), newF(i, 1), newF(i, 2))
+            );
+        }
+
+
+
+
+
+
+        // Find bounding box
+        Vec3f xmin = surf_x[0], xmax = surf_x[0];
+        for (size_t i = 1; i<surf_x.size(); ++i)
+            update_minmax(surf_x[i], xmin, xmax);
+
+        // Build triangle mesh data structure
+        TriMesh trimesh(surf_x, surf_tri);
+
+        // Make the level set
+        float dx = _dilationOrEpsilonSize.get() / 2.f;
+
+        // Determining dimensions of voxel grid.
+        // Round up to ensure voxel grid completely contains bounding box.
+        // Also add padding of 2 grid points around the bounding box.
+        // NOTE: We add 5 here so as to add 4 grid points of padding, as well as
+        // 1 grid point at the maximal boundary of the bounding box 
+        // ie: (xmax-xmin)/dx + 1 grid points to cover one axis of the bounding box
+        Vec3f origin = xmin - Vec3f(2 * dx);
+        int ni = (int)std::ceil((xmax[0] - xmin[0]) / dx) + 5,
+            nj = (int)std::ceil((xmax[1] - xmin[1]) / dx) + 5,
+            nk = (int)std::ceil((xmax[2] - xmin[2]) / dx) + 5;
+
+        SDF sdf(origin, dx, ni, nj, nk); // Initialize signed distance field.
+        std::printf("making %dx%dx%d level set\n", ni, nj, nk);
+        make_signed_distance(surf_tri, surf_x, sdf);
+
+
+        // Then the tet mesh
+        TetMesh mesh;
+
+        bool optimize = false;
+        make_tet_mesh(mesh, sdf, optimize, false, false); //231
+
+
+        std::shared_ptr<Eigen::MatrixXd> TV = std::make_shared<Eigen::MatrixXd>();
+        std::shared_ptr<Eigen::MatrixXi> TT = std::make_shared<Eigen::MatrixXi>();
+
+
+        const std::vector<Vec3f>& v = mesh.verts();
+        TV->resize(v.size(), 3);
+        const std::vector<Vec4i>& t = mesh.tets();
+        TT->resize(t.size(), 4);
+
+        for (size_t i = 0; i < v.size(); ++i) {
+            TV->row(i) = Eigen::RowVector3d(v[i][0], v[i][1], v[i][2]);
+        }
+
+        for (size_t i = 0; i < t.size(); ++i) {
+            TT->row(i) = Eigen::RowVector4i(t[i][0], t[i][1], t[i][2], t[i][3]);
+        }
+
+
+        dispatchFront([this, TV, TT]() {
+            _vertexOutport.setData(TV);
+            _tetIndexOutport.setData(TT);
+        });
+    }
 }
 
 void TetMesher::updateFilter() {

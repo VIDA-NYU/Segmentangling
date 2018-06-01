@@ -234,6 +234,8 @@ Straightener::Straightener()
     , _statusString("_statusString", "Status string")
     , _statusColor("_statusColor", "Status color")
     , _instructionsString("_instructionsString", "Instructions string")
+    , _skeletonMeshReadyString("_skeletonMeshReadyString", "Skeleton Mesh Ready String")
+    , _outerMeshReadyString("_outerMeshReadyString", "Outer Mesh Ready String")
 {
     // Ports
     addPort(_inport);
@@ -361,6 +363,8 @@ Straightener::Straightener()
     addProperty(_statusString);
     addProperty(_statusColor);
     addProperty(_instructionsString);
+    addProperty(_skeletonMeshReadyString);
+    addProperty(_outerMeshReadyString);
 
 
     // Rest of ctor
@@ -374,6 +378,7 @@ Straightener::Straightener()
     updateSelectionStateString();
     updateInputParameterString();
     updateStatusString();
+    updateMeshReadyStrings();
 }
 
 Straightener::~Straightener() {
@@ -391,11 +396,13 @@ void Straightener::process() {
         updateInputParameterString();
         updateDiffusionReadyString();
         updateStatusString();
+        updateMeshReadyStrings();
 
         _isFirstFrame = false;
     }
 
     updateInstructionsString();
+    updateMeshReadyStrings();
 
     if (_trianglesVertexInport.isChanged() || _trianglesTetIndexInport.isChanged()) {
         std::shared_ptr<const Eigen::MatrixXd> v = _trianglesVertexInport.getData();
@@ -700,6 +707,7 @@ void Straightener::createDebugMeshes() {
 
 void Straightener::eventUpdateMousePos(Event* e) {
     updateStatusString();
+    updateMeshReadyStrings();
 
     if (_stopInteraction) {
         return;
@@ -1047,6 +1055,22 @@ void Straightener::updateInstructionsString() {
     }
     else {
         _instructionsString = "";
+    }
+}
+
+void Straightener::updateMeshReadyStrings() {
+    if (_skeletonTetra.TVOriginal.rows() > 0) {
+        _skeletonMeshReadyString = "Skeleton Mesh";
+    }
+    else {
+        _skeletonMeshReadyString = "";
+    }
+
+    if (_outerTetra.TV.rows() > 0) {
+        _outerMeshReadyString = "Outer Mesh";
+    }
+    else {
+        _outerMeshReadyString = "";
     }
 }
 

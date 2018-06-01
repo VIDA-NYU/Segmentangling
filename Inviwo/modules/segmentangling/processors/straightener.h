@@ -108,6 +108,10 @@ private:
     void updateInstructionsString();
     StringProperty _instructionsString;
 
+    void updateMeshReadyStrings();
+    StringProperty _skeletonMeshReadyString;
+    StringProperty _outerMeshReadyString;
+
 
     //
     // Ports

@@ -1,3 +1,6 @@
 [submodule "fish_deformation"]
 	path = fish_deformation
 	url = https://github.com/fwilliams/fish_deformation.git
+[submodule "Inviwo/modules/segmentangling/ext/quartet"]
+	path = Inviwo/modules/segmentangling/ext/quartet
+	url = https://github.com/crawforddoran/quartet.git

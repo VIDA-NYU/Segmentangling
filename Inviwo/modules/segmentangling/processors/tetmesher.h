@@ -55,6 +55,9 @@ private:
     FloatProperty _componentCutoff;
     ButtonProperty _action;
 
+    IntProperty _dilationOrEpsilonSize;
+    BoolProperty _useGTet; // Quartet-else
+
     Eigen::MatrixXi _F;
     Eigen::VectorXi _components;
     std::vector<int> nComponents;

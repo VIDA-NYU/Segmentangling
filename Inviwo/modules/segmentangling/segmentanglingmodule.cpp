@@ -13,6 +13,7 @@
 #include <modules/segmentangling/processors/yixinloader.h>
 #include <modules/segmentangling/processors/topoppparameterer.h>
 #include <modules/segmentangling/processors/selector.h>
+#include <modules/segmentangling/processors/volumestopper.h>
 
 namespace inviwo {
 
@@ -39,6 +40,7 @@ SegmentanglingModule::SegmentanglingModule(InviwoApplication* app)
     registerProcessor<VolumeSliceOverlay>();
     registerProcessor<YixinLoader>();
     registerProcessor<Selector>();
+    registerProcessor<VolumeStopper>();
 }
 
 }  // namespace
