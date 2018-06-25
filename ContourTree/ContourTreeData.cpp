@@ -15,6 +15,7 @@ void ContourTreeData::loadBinFile(std::string fileName) {
     // read meta data
     {
         std::ifstream ip(fileName + ".rg.dat");
+        assert(ip.is_open());
 //        if(!ip.open(QFile::ReadOnly | QIODevice::Text)) {
 //            std::cout << "could not read file" << fileName + ".rg.dat";
 //        }
