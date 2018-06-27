@@ -66,7 +66,7 @@ int main(int argc, char *argv[])
 {
     QCoreApplication a(argc, argv);
 
-    preProcessing("/store/tmp/ct/CTA-cardio",64,64,41);
+    preProcessing("../CTA-cardio",64,64,41);
     exit(0);
     return a.exec();
 }

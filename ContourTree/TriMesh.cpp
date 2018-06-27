@@ -3,6 +3,7 @@
 #include <fstream>
 #include <iostream>
 #include <set>
+#include <algorithm>
 
 namespace contourtree {
 

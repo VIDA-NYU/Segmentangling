@@ -6,6 +6,8 @@
 
 #if !defined (WIN32)
 #include <parallel/algorithm>
+#else
+#include <algorithm>
 #endif
 
 namespace contourtree {
