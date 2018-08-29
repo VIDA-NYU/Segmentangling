@@ -88,7 +88,6 @@ void TriMesh::loadData(std::string fileName)
     for(int i = 0;i < nv;i ++) {
         maxStar = std::max(maxStar,(int)vertices[i].adj.size());
     }
-    std::cout << maxStar << std::endl;
 }
 
 }

@@ -1,4 +1,5 @@
 #include "HyperVolume.hpp"
+#include "Logger.hpp"
 
 #include <fstream>
 #include <cassert>
@@ -11,7 +12,7 @@ HyperVolume::HyperVolume(const ContourTreeData &ctData, std::string partFile) {
 
     std::ifstream bin(partFile, std::ios::binary| std::ios::ate);
     uint32_t size = bin.tellg();
-    std::cout << "part size: " << size << std::endl;
+    Logger::log("part size: " + size);
     bin.close();
 
     std::vector<uint32_t> cols(size / sizeof(uint32_t));

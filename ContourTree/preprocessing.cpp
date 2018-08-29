@@ -1,4 +1,5 @@
 #include "preprocessing.hpp"
+#include "Logger.hpp"
 
 using namespace contourtree;
 
@@ -14,14 +15,14 @@ void preProcessing(std::string dataName, int dimx, int dimy, int dimz) {
     grid.loadGrid(data + ".raw");
     MergeTree ct;
     contourtree::TreeType tree = TypeJoinTree;
-    std::cout << "computing join tree" << std::endl;
+    Logger::log("computing join tree" );
     ct.computeTree(&grid, tree);
     end = std::chrono::system_clock::now();
-    std::cout << "Time to compute contour tree: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms\n";
+    Logger::log("Time to compute contour tree: " + std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()) + "ms");
     ct.output(data, tree);
 
 
-    std::cout << "creating hierarchical segmentation" << std::endl;
+    Logger::log("creating hierarchical segmentation" );
     // now simplify and store simplification hierarchy
     start = std::chrono::system_clock::now();
     ContourTreeData ctdata;
@@ -39,8 +40,8 @@ void preProcessing(std::string dataName, int dimx, int dimy, int dimz) {
     }
     sim.simplify(simFn);
     end = std::chrono::system_clock::now();
-    std::cout << "Time to simplify: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms\n";
+    Logger::log("Time to simplify: " + std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()) + "ms");
 
     sim.outputOrder(data);
-    std::cout << "done" << std::endl;
+    Logger::log("done" );
 }

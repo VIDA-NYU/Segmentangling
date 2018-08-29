@@ -1,5 +1,6 @@
 #include "ContourTree.hpp"
 #include "MergeTree.hpp"
+#include "Logger.hpp"
 #include <vector>
 #include <deque>
 #include <cassert>
@@ -11,7 +12,7 @@ namespace contourtree {
 ContourTree::ContourTree() {}
 
 void ContourTree::setup(const MergeTree *tree) {
-    std::cout << "setting up merge process" << std::endl;;
+    Logger::log("setting up merge process");;
     this->tree = tree;
     nv = tree->data->getVertexCount();
     nodesJoin.resize(nv);
@@ -42,7 +43,7 @@ void ContourTree::setup(const MergeTree *tree) {
 }
 
 void ContourTree::computeCT() {
-    std::cout << "merging join and split trees" << std::endl;;
+    Logger::log("merging join and split trees");;
     std::deque<int64_t> q;
     for(int64_t v = 0;v < nv;v ++) {
         Node &jn = nodesJoin[v];
@@ -64,7 +65,7 @@ void ContourTree::computeCT() {
 
         if(sn.next.size() == 0) {
             if(sn.prev.size() > 1) {
-                std::cout << "Can this happen too???" << std::endl;
+                Logger::log("Can this happen too???");
                 assert(false);
             }
             int xj = sn.prev[0];
@@ -80,7 +81,7 @@ void ContourTree::computeCT() {
             }
         } else {
             if(jn.next.size() > 1) {
-                std::cout << "Can this happen too???" << std::endl;
+                Logger::log("Can this happen too???");
                 assert(false);
             }
             int xj = jn.next[0];
@@ -100,7 +101,7 @@ void ContourTree::computeCT() {
 }
 
 void ContourTree::output(std::string fileName) {
-    std::cout << "removing deg-2 nodes and computing segmentation" << std::endl;
+    Logger::log("removing deg-2 nodes and computing segmentation");
 
     // saving some memory
     nodesJoin.clear();
@@ -147,18 +148,18 @@ void ContourTree::output(std::string fileName) {
         }
     }
 
-//    std::cout << "sanity testing segementation" << std::endl;
+//    Logger::log("sanity testing segementation");
 //    for(uint32_t ano: arcMap) {
 //        assert(ano != (uint32_t)(-1));
 //        assert(ano < arcNo);
 //    }
 
     // write meta data
-    std::cout << "Writing meta data" << std::endl;
+    Logger::log("Writing meta data");
     {
         std::ofstream pr(fileName + ".rg.dat");
 //        if(!pr.open(QFile::WriteOnly | QIODevice::Text)) {
-//            std::cout << "could not write to file" << fileName + ".rg.dat" << std::endl;
+//            Logger::log("could not write to file" << fileName + ".rg.dat");
 //        }
 //        QTextStream text(&pr);
         pr << nodeids.size() << "\n";
@@ -166,7 +167,7 @@ void ContourTree::output(std::string fileName) {
         pr.close();
     }
 
-    std::cout << "writing tree output" << std::endl;
+    Logger::log("writing tree output");
     std::string rgFile = fileName + ".rg.bin";
     std::ofstream of(rgFile,std::ios::binary);
     of.write((char *)nodeids.data(),nodeids.size() * sizeof(int64_t));
@@ -175,7 +176,7 @@ void ContourTree::output(std::string fileName) {
     of.write((char *)arcs.data(),arcs.size() * sizeof(int64_t));
     of.close();
 
-    std::cout << "writing partition" << std::endl;
+    Logger::log("writing partition");
     std::string rawFile = fileName + ".part.raw";
     of.open(rawFile, std::ios::binary);
     of.write((char *)arcMap.data(), arcMap.size() * sizeof(uint32_t));

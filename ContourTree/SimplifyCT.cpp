@@ -1,4 +1,5 @@
 #include "SimplifyCT.hpp"
+#include "Logger.hpp"
 
 #include <cassert>
 #include <fstream>
@@ -182,10 +183,10 @@ void SimplifyCT::mergeVertex(uint32_t v) {
 }
 
 void SimplifyCT::simplify(SimFunction *simFn) {
-    std::cout << "init" << std::endl;
+    Logger::log("init" );
     initSimplification(simFn);
 
-    std::cout << "going over priority queue" << std::endl;
+    Logger::log("going over priority queue" );
     while(queue.size() > 0) {
         uint32_t ano = queue.top();
         queue.pop();
@@ -203,7 +204,7 @@ void SimplifyCT::simplify(SimFunction *simFn) {
             }
         }
     }
-    std::cout << "pass over removed" << std::endl;
+    Logger::log("pass over removed" );
     int root = 0;
     for(int i = 0;i < removed.size();i ++) {
         if(!removed[i]) {
@@ -216,10 +217,10 @@ void SimplifyCT::simplify(SimFunction *simFn) {
 
 
 void SimplifyCT::simplify(const std::vector<uint32_t> &order, int topk, float th, const std::vector<float> &wts) {
-    std::cout << "init" << std::endl;
+    Logger::log("init" );
     initSimplification(NULL);
 
-    std::cout << "going over order queue" << std::endl;
+    Logger::log("going over order queue" );
     for(int i = 0;i < order.size();i ++) {
         inq[order.at(i)] = true;
     }
@@ -228,7 +229,7 @@ void SimplifyCT::simplify(const std::vector<uint32_t> &order, int topk, float th
         for(int i = 0;i < ct;i ++) {
             uint32_t ano = order.at(i);
             if(!isCandidate(branches[ano])) {
-                std::cout << "failing candidate test" << std::endl;
+                Logger::log("failing candidate test" );
                 assert(false);
             }
             inq[ano] = false;
@@ -238,7 +239,7 @@ void SimplifyCT::simplify(const std::vector<uint32_t> &order, int topk, float th
         for(int i = 0;i < order.size() - 1;i ++) {
             uint32_t ano = order.at(i);
             if(!isCandidate(branches[ano])) {
-                std::cout << "failing candidate test" << std::endl;
+                Logger::log("failing candidate test" );
                 assert(false);
             }
             float fn = wts.at(i);
@@ -252,11 +253,11 @@ void SimplifyCT::simplify(const std::vector<uint32_t> &order, int topk, float th
 }
 
 void SimplifyCT::outputOrder(std::string fileName) {
-    std::cout << "Writing meta data" << std::endl;
+    Logger::log("Writing meta data" );
     {
         std::ofstream pr(fileName + ".order.dat");
 //        if(!pr.open(QFile::WriteOnly | QIODevice::Text)) {
-//            std::cout << "could not write to file" << fileName + ".order.dat";
+//            Logger::log("could not write to file" << fileName + ".order.dat";
 //        }
 //        QTextStream text(&pr);
         pr << order.size() << "\n";
@@ -281,7 +282,7 @@ void SimplifyCT::outputOrder(std::string fileName) {
         wts[i] /= maxWt;
     }
 
-    std::cout << "writing tree output" << std::endl;
+    Logger::log("writing tree output" );
     std::string binFile = fileName + ".order.bin";
     std::ofstream of(binFile,std::ios::binary);
     of.write((char *)order.data(),order.size() * sizeof(uint32_t));

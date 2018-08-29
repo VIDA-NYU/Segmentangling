@@ -1,4 +1,5 @@
 #include "MergeTree.hpp"
+#include "Logger.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -40,18 +41,18 @@ void MergeTree::computeTree(ScalarFunction* data, TreeType type) {
         break;
 
     default:
-        std::cout << "Invalid tree type" << std::endl;
+        Logger::log("Invalid tree type");
         assert(false);
     }
 
     en = std::chrono::system_clock::now();
     long time = std::chrono::duration_cast<std::chrono::milliseconds>(en-ct).count();
 
-    std::cout << "Time taken to compute tree : " << time << "ms" << std::endl;
+    Logger::log("Time taken to compute tree : " + std::to_string(time) + "ms");
 }
 
 void MergeTree::setupData() {
-    std::cout << "setting up data" << std::endl;
+    Logger::log("setting up data");
     maxStar = data->getMaxDegree();
     star.resize(maxStar);
 
@@ -70,7 +71,7 @@ void MergeTree::setupData() {
 }
 
 void MergeTree::orderVertices() {
-    std::cout << "ordering vertices" << std::endl;
+    Logger::log("ordering vertices");
 #if defined (WIN32)
     std::sort(sv.begin(),sv.end(),Compare(data));
 #else
@@ -79,11 +80,11 @@ void MergeTree::orderVertices() {
 }
 
 void MergeTree::computeJoinTree() {
-    std::cout << "computing join tree" << std::endl;
+    Logger::log("computing join tree");
     int64_t ct = 0;
     for(int64_t i = noVertices - 1;i >= 0; i --) {
         if(ct % 1000000 == 0) {
-            std::cout << "processing vertex " <<  ct << " of " << noVertices << std::endl;
+            Logger::log("processing vertex " + std::to_string(ct) + " of " + std::to_string(noVertices));
         }
         ct ++;
 
@@ -102,11 +103,11 @@ void MergeTree::computeJoinTree() {
 
 
 void MergeTree::computeSplitTree() {
-    std::cout << "computing split tree" << std::endl;
+    Logger::log("computing split tree");
     int64_t ct = 0;
     for(int64_t i = 0;i < noVertices; i ++) {
         if(ct % 1000000 == 0) {
-            std::cout << "processing vertex " <<  ct << " of " << noVertices << std::endl;
+            Logger::log("processing vertex " + std::to_string(ct) + " of " + std::to_string(noVertices));
         }
         ct ++;
 
@@ -149,11 +150,11 @@ void MergeTree::output(std::string fileName, TreeType tree)
     noArcs = noNodes - 1;
 
     // write meta data
-    std::cout << "Writing meta data" << std::endl;
+    Logger::log("Writing meta data");
     {
         std::ofstream pr(fileName + ".rg.dat");
 //        if(!pr.open(QFile::WriteOnly | QIODevice::Text)) {
-//            std::cout << "could not write to file" << fileName + ".rg.dat" << std::endl;
+//            Logger::log("could not write to file" << fileName + ".rg.dat");
 //        }
 //        QTextStream text(&pr);
         pr << noNodes << "\n";
@@ -161,7 +162,7 @@ void MergeTree::output(std::string fileName, TreeType tree)
         pr.close();
     }
 
-    std::cout << ("Creating required memory!") << std::endl;
+    Logger::log(("Creating required memory!"));
     std::vector<int64_t> nodeids(noNodes);
     std::vector<unsigned char> nodefns(noNodes);
     std::vector<char> nodeTypes(noNodes);
@@ -170,7 +171,7 @@ void MergeTree::output(std::string fileName, TreeType tree)
     std::vector<int64_t> arcFrom(noNodes);
     std::vector<int64_t> arcTo(noNodes);
 
-    std::cout << "Generating tree" << std::endl;
+    Logger::log("Generating tree");
     int nct = 0;
     if(newVertex) {
         if(tree == TypeJoinTree){
@@ -263,7 +264,7 @@ void MergeTree::output(std::string fileName, TreeType tree)
         assert(arcNo == noArcs);
     }
 
-    std::cout << "writing tree output" << std::endl;
+    Logger::log("writing tree output");
     std::string rgFile = fileName + ".rg.bin";
     std::ofstream of(rgFile,std::ios::binary);
     of.write((char *)nodeids.data(),nodeids.size() * sizeof(int64_t));
@@ -272,7 +273,7 @@ void MergeTree::output(std::string fileName, TreeType tree)
     of.write((char *)arcs.data(),arcs.size() * sizeof(int64_t));
     of.close();
 
-    std::cout << "writing partition" << std::endl;
+    Logger::log("writing partition");
     std::string rawFile = fileName + ".part.raw";
     of.open(rawFile, std::ios::binary);
     of.write((char *)arcMap.data(), arcMap.size() * sizeof(uint32_t));

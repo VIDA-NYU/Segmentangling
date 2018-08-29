@@ -18,7 +18,9 @@ SOURCES += main.cpp \
     TopologicalFeatures.cpp \
     HyperVolume.cpp \
     ContourTree.cpp \
-    ImageData.cpp
+    ImageData.cpp \
+    preprocessing.cpp \
+    Logger.cpp
 
 HEADERS += \
     DisjointSets.hpp \
@@ -36,7 +38,9 @@ HEADERS += \
     ContourTree.hpp \
     test.hpp \
     ImageData.hpp \
-    stb_image.h
+    stb_image.h \
+    preprocessing.hpp \
+    Logger.hpp
 
 # Unix configuration
 unix:!macx{

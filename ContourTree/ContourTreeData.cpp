@@ -1,4 +1,5 @@
 #include "ContourTreeData.hpp"
+#include "Logger.hpp"
 
 #include <fstream>
 #include <iostream>
@@ -16,16 +17,12 @@ void ContourTreeData::loadBinFile(std::string fileName) {
     {
         std::ifstream ip(fileName + ".rg.dat");
         assert(ip.is_open());
-//        if(!ip.open(QFile::ReadOnly | QIODevice::Text)) {
-//            std::cout << "could not read file" << fileName + ".rg.dat";
-//        }
-//        QTextStream text(&ip);
         ip >> noNodes; // = text.readLine().toLongLong();
         ip >> noArcs; // = text.readLine().toLongLong();
         assert(noNodes == noArcs + 1);
         ip.close();
     }
-    std::cout << noNodes << " " << noArcs << std::endl;
+    Logger::log(noNodes + " " + noArcs);
 
     std::vector<int64_t> nodeids(noNodes);
     std::vector<unsigned char> nodefns(noNodes);
@@ -41,20 +38,12 @@ void ContourTreeData::loadBinFile(std::string fileName) {
     ip.read((char *)arcs.data(),arcs.size() * sizeof(int64_t));
     ip.close();
 
-    std::cout << "finished reading data" << std::endl;
+    Logger::log("finished reading data");
     this->loadData(nodeids,nodefns,nodeTypes,arcs);
 }
 
 void ContourTreeData::loadTxtFile(std::string fileName) {
     std::ifstream ip(fileName);
-//    if(!ip.open(QFile::ReadOnly | QIODevice::Text)) {
-//        std::cout << "could not read file" << fileName;
-//    }
-//    QTextStream text(&ip);
-
-//    std::stringList line = text.readLine().split(" ");
-//    noNodes = std::string(line[0]).toInt();
-//    noArcs = std::string(line[1]).toInt();
     ip >> noNodes;
     ip >> noArcs;
 
@@ -95,7 +84,7 @@ void ContourTreeData::loadTxtFile(std::string fileName) {
         arcs[i * 2 + 1] = v2;
     }
     ip.close();
-    std::cout << "finished reading data" << std::endl;
+    Logger::log("finished reading data");
     this->loadData(nodeids,nodefns, nodeTypes,arcs);
 }
 
