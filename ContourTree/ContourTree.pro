@@ -1,10 +1,8 @@
-QT += core
-#QT -= gui
-
 CONFIG += c++11
 
 TARGET = ContourTree
 CONFIG -= app_bundle
+CONFIG -= qt
 
 TEMPLATE = app
 
@@ -48,6 +46,7 @@ unix:!macx{
     QMAKE_CXXFLAGS += -fopenmp
     QMAKE_LFLAGS   += -fopenmp
     LIBS += -lboost_thread -lboost_filesystem -lboost_program_options -lboost_system -lboost_iostreams
+    LIBS += -lfreeimage -lfreeimageplus
 }
 
 win32{

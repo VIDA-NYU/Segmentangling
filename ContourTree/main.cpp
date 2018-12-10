@@ -1,5 +1,3 @@
-#include <QCoreApplication>
-
 #include "DisjointSets.hpp"
 #include <iostream>
 #include <Grid3D.hpp>
@@ -21,8 +19,6 @@ using namespace contourtree;
 
 int main(int argc, char *argv[])
 {
-    QCoreApplication a(argc, argv);
-
     // need to call preprocessing using the data name
     std::string ipFolder= "/home/harishd/Desktop/Projects/Fish/data/straightening/OSF/Plagiotremus-tapinosoma";
     std::string filePrefix = "Plaagiotremus_tapinosoma_9.9um_2k__rec_Tra";
@@ -35,6 +31,5 @@ int main(int argc, char *argv[])
 
     SamplingOutput op = ImageData::writeOutput(ipFolder,filePrefix,stCt,enCt,ext,opFolder,opPrefix,4,true);
     preProcessing(op.fileName,op.x,op.y,op.z);
-    exit(0);
-    return a.exec();
+    return 0;
 }

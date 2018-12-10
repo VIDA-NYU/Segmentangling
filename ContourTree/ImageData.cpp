@@ -7,10 +7,7 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
-
-#include <QImage>
-#include <QDebug>
-#include <QColor>
+#include <FreeImagePlus.h>
 
 SamplingOutput ImageData::writeOutput(std::string ipFolder, std::string filePrefix, int startCt, int endCt, std::string ext, std::string opFolder, std::string opPrefix, int sample, bool writeOriginal) {
     int ct = 0;
@@ -45,18 +42,26 @@ SamplingOutput ImageData::writeOutput(std::string ipFolder, std::string filePref
         for(int j = 0;j < sample;j ++) {
             int fno = i + j;
             if(fno <= endCt) {
-                std::string fileName = (ipFolder + "/" + filePrefix + QString::number(fno).rightJustified(ct,'0').toStdString() + "." + ext);
-                QImage img(QString(fileName.c_str()));
+                int tmp = fno;
+                int nct = 0;
+                while(tmp != 0) {
+                    tmp /= 10;
+                    nct ++;
+                }
+                if(nct == 0) nct = 1;
+                std::string fileName = (ipFolder + "/" + filePrefix + std::string(ct - nct, '0').append(std::to_string(fno)) + "." + ext);
+                fipImage img;
+                img.load(fileName.c_str());
 
                 if(size == 0) {
-                    size = img.width() * img.height();
-                    ix = img.width();
-                    iy = img.height();
+                    size = img.getWidth() * img.getHeight();
+                    ix = img.getWidth();
+                    iy = img.getHeight();
                     odata.resize(size);
                     oct.resize(size);
                 }
                 // assuming 8-bit values
-                const uchar * data = img.constBits();
+                const uchar * data = img.accessPixels();
                 if(writeOriginal) {
                     origf.write((const char *)data,size);
                 }
@@ -120,8 +125,8 @@ SamplingOutput ImageData::writeOutput(std::string ipFolder, std::string filePref
     sdat << "Format: UINT8" << std::endl;
     sdat.close();
 
-    qDebug() << "image size" << ix << iy << iz;
-    qDebug() << "sample size" << sx << sy << sz;
+    std::cout << "image size: " << ix << " " << iy << " " << iz << std::endl;
+    std::cout << "sample size: " << sx << " " << sy << " " << sz << std::endl;
 
     SamplingOutput ret;
     ret.fileName = std::string(opFolder + "/" + opPrefix + "-sample");

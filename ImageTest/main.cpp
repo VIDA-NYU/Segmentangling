@@ -2,11 +2,17 @@
 #include <FreeImagePlus.h>
 #include <QImage>
 #include <fstream>
+#include <iomanip>
 
 using namespace std;
 
 int main()
 {
+    int ii = 1230;
+    cout << std::string(5 - nct, '0').append(to_string(ii)) << endl;
+    cout << QString::number(ii).rightJustified(5,'0').toStdString() << endl;
+    exit(0);
+
     fipImage img;
     bool suc = img.load("../test.bmp");
     cout << "loaded " << suc << endl;

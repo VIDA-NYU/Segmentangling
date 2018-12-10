@@ -3,6 +3,7 @@
 
 #include <string>
 
+typedef unsigned char uchar;
 
 struct SamplingOutput{
     std::string fileName;
