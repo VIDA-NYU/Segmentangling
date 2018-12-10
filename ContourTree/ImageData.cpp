@@ -61,9 +61,17 @@ SamplingOutput ImageData::writeOutput(std::string ipFolder, std::string filePref
                     oct.resize(size);
                 }
                 // assuming 8-bit values
-                const uchar * data = img.accessPixels();
+                const uchar * fimgdata = img.accessPixels();
+                std::vector<uchar> data(size);
+                for(int x = 0;x < ix;x ++) {
+                    for(int y = 0;y < iy;y ++) {
+                        int qi = x + y * ix;
+                        int fi = x + (iy - 1 - y) * ix;
+                        data[qi] = fimgdata[fi];
+                    }
+                }
                 if(writeOriginal) {
-                    origf.write((const char *)data,size);
+                    origf.write((const char *)data.data(),size);
                 }
                 for(int k = 0;k < size;k ++) {
                     if(j == 0) {
