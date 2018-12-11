@@ -45,18 +45,18 @@ unix:!macx{
     INCLUDEPATH += -I /usr/local/include/
     QMAKE_CXXFLAGS += -fopenmp
     QMAKE_LFLAGS   += -fopenmp
-    LIBS += -lboost_thread -lboost_filesystem -lboost_program_options -lboost_system -lboost_iostreams
     LIBS += -lfreeimage -lfreeimageplus
 }
 
 win32{
     CONFIG += console
     INCLUDEPATH += "$$(BOOST_PATH)"
-    INCLUDEPATH += "$$(UniversalCRT_IncludePath)"
+    INCLUDEPATH += ../FreeImage/Source/
+    INCLUDEPATH += ../FreeImage/Wrapper/FreeImagePlus/
 
     LIBS += "-ladvapi32"
-    LIBS += "-L$$(BOOST_LIB_PATH)"
-    LIBS += "-L$$(UniversalCRT_LibraryPath_x64)"
+    LIBS += -L../FreeImage/Dist/x64/ -lFreeImage
+    LIBS += -L../FreeImage/Wrapper/FreeImagePlus/dist/x64/ -lFreeImagePlus
 
 #    QMAKE_CXXFLAGS_RELEASE += $$QMAKE_CFLAGS_RELEASE_WITH_DEBUGINFO
 #    QMAKE_LFLAGS_RELEASE += $$QMAKE_LFLAGS_RELEASE_WITH_DEBUGINFO
