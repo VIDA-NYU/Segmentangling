@@ -22,7 +22,7 @@ void ContourTreeData::loadBinFile(std::string fileName) {
         assert(noNodes == noArcs + 1);
         ip.close();
     }
-    Logger::log(noNodes + " " + noArcs);
+    Logger::log(std::to_string(noNodes) + " " + std::to_string(noArcs));
 
     std::vector<int64_t> nodeids(noNodes);
     std::vector<unsigned char> nodefns(noNodes);

@@ -154,7 +154,7 @@ void MergeTree::output(std::string fileName, TreeType tree)
     {
         std::ofstream pr(fileName + ".rg.dat");
 //        if(!pr.open(QFile::WriteOnly | QIODevice::Text)) {
-//            Logger::log("could not write to file" << fileName + ".rg.dat");
+//            Logger::log(std::string("could not write to file") + fileName + std::string(".rg.dat"));
 //        }
 //        QTextStream text(&pr);
         pr << noNodes << "\n";
@@ -162,7 +162,7 @@ void MergeTree::output(std::string fileName, TreeType tree)
         pr.close();
     }
 
-    Logger::log(("Creating required memory!"));
+    Logger::log(std::string("Creating required memory!"));
     std::vector<int64_t> nodeids(noNodes);
     std::vector<unsigned char> nodefns(noNodes);
     std::vector<char> nodeTypes(noNodes);

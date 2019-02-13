@@ -257,7 +257,7 @@ void SimplifyCT::outputOrder(std::string fileName) {
     {
         std::ofstream pr(fileName + ".order.dat");
 //        if(!pr.open(QFile::WriteOnly | QIODevice::Text)) {
-//            Logger::log("could not write to file" << fileName + ".order.dat";
+//            Logger::log(std::string("could not write to file") + fileName + std::string(".order.dat");
 //        }
 //        QTextStream text(&pr);
         pr << order.size() << "\n";

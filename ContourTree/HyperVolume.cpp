@@ -12,7 +12,7 @@ HyperVolume::HyperVolume(const ContourTreeData &ctData, std::string partFile) {
 
     std::ifstream bin(partFile, std::ios::binary| std::ios::ate);
     uint32_t size = bin.tellg();
-    Logger::log("part size: " + size);
+    Logger::log("part size: " + std::to_string(size));
     bin.close();
 
     std::vector<uint32_t> cols(size / sizeof(uint32_t));
