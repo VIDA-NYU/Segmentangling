@@ -1,4 +1,5 @@
 #include "ImageData.hpp"
+#include "Logger.hpp"
 
 //#define STBI_FAILURE_USERMSG
 //#define STB_IMAGE_IMPLEMENTATION
@@ -7,6 +8,7 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <sstream>
 
 #include <QImage>
 #include <QDebug>
@@ -120,8 +122,14 @@ SamplingOutput ImageData::writeOutput(std::string ipFolder, std::string filePref
     sdat << "Format: UINT8" << std::endl;
     sdat.close();
 
-    qDebug() << "image size" << ix << iy << iz;
-    qDebug() << "sample size" << sx << sy << sz;
+
+    std::stringstream img_size_ss;
+    img_size_ss << "Full-res image size " << ix << ", " << iy << ", " << iz;
+    contourtree::Logger::log(img_size_ss.str());
+
+    std::stringstream sample_size_ss;
+    sample_size_ss << "Low-res image size " << sx << ", " << sy << ", " << sz;
+    contourtree::Logger::log(sample_size_ss.str());
 
     SamplingOutput ret;
     ret.fileName = std::string(opFolder + "/" + opPrefix + "-sample");
