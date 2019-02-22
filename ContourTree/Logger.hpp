@@ -2,8 +2,9 @@
 #define LOGGER_HPP
 
 #include <string>
+#include <memory>
 
-#ifdef USE_SPDLOG
+#ifdef CONTOUR_TREE_USE_SPDLOG
 #include <spdlog/spdlog.h>
 #endif
 
@@ -16,13 +17,13 @@ private:
     ~Logger() {}
 
     static Logger* logger;
-#ifdef USE_SPDLOG
-    shared_ptr<spdlog::logger> spdlogger;
+#ifdef CONTOUR_TREE_USE_SPDLOG
+    std::shared_ptr<spdlog::logger> spdlogger;
 #endif
 
 public:
-#ifdef USE_SPDLOG
-    static void setLogger(shared_ptr<spdlog::logger> spdlogger);
+#ifdef CONTOUR_TREE_USE_SPDLOG
+    static void setLogger(std::shared_ptr<spdlog::logger> spdlogger);
 #endif
     static void log(std::string str);
 };
