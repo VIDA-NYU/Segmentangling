@@ -14,7 +14,7 @@
 #include <QDebug>
 #include <QColor>
 
-SamplingOutput ImageData::writeOutput(std::string ipFolder, std::string filePrefix, int startCt, int endCt, std::string ext, std::string opFolder, std::string opPrefix, int sample, bool writeOriginal) {
+SamplingOutput ImageData::writeOutput(std::string ipFolder, std::string filePrefix, int startCt, int endCt, std::string ext, std::string opFolder, std::string highResPrefix, std::string lowResPrefix, int sample, bool writeOriginal) {
     int ct = 0;
     int tmp = endCt;
     while(tmp != 0) {
@@ -22,11 +22,11 @@ SamplingOutput ImageData::writeOutput(std::string ipFolder, std::string filePref
         tmp /= 10;
     }
 
-    std::string origRaw = opFolder + "/" + opPrefix + ".raw";
-    std::string origDat = opFolder + "/" + opPrefix + ".dat";
+    std::string origRaw = opFolder + "/" + highResPrefix + ".raw";
+    std::string origDat = opFolder + "/" + highResPrefix + ".dat";
 
-    std::string sampleRaw = opFolder + "/" + opPrefix + "-sample.raw";
-    std::string sampleDat = opFolder + "/" + opPrefix + "-sample.dat";
+    std::string sampleRaw = opFolder + "/" + lowResPrefix + ".raw";
+    std::string sampleDat = opFolder + "/" + lowResPrefix + ".dat";
 
     std::ofstream origf;
     std::ofstream sampf;
@@ -105,7 +105,7 @@ SamplingOutput ImageData::writeOutput(std::string ipFolder, std::string filePref
 
         std::ofstream odat;
         odat.open(origDat);
-        std::string nameOnly = opPrefix + ".raw";
+        std::string nameOnly = highResPrefix + ".raw";
         odat << "RawFile: " << nameOnly << std::endl;
         odat << "Resolution: " << ix << " " << iy << " " << iz << std::endl;
         odat << "Format: UINT8" << std::endl;
@@ -116,7 +116,7 @@ SamplingOutput ImageData::writeOutput(std::string ipFolder, std::string filePref
 
     std::ofstream sdat;
     sdat.open(sampleDat);
-    std::string nameOnly = opPrefix + "-sample.raw";
+    std::string nameOnly = lowResPrefix + ".raw";
     sdat << "RawFile: " << nameOnly << std::endl;
     sdat << "Resolution: " << sx << " " << sy << " " << sz << std::endl;
     sdat << "Format: UINT8" << std::endl;
@@ -132,7 +132,7 @@ SamplingOutput ImageData::writeOutput(std::string ipFolder, std::string filePref
     contourtree::Logger::log(sample_size_ss.str());
 
     SamplingOutput ret;
-    ret.fileName = std::string(opFolder + "/" + opPrefix + "-sample");
+    ret.fileName = std::string(opFolder + "/" + lowResPrefix);
     ret.x = sx;
     ret.y = sy;
     ret.z = sz;

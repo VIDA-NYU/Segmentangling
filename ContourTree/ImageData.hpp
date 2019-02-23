@@ -14,7 +14,7 @@ class ImageData
 public:
     ImageData() {}
 
-    static SamplingOutput writeOutput(std::string ipFolder, std::string filePrefix, int startCt, int endCt, std::string ext, std::string opFolder, std::string opPrefix, int sample, bool writeOriginal = true);
+    static SamplingOutput writeOutput(std::string ipFolder, std::string filePrefix, int startCt, int endCt, std::string ext, std::string opFolder, std::string highResPrefix, std::string lowResPrefix, int sample, bool writeOriginal = true);
 };
 
 #endif // IMAGEDATA_HPP
