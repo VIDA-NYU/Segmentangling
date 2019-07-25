@@ -6,7 +6,7 @@
 #include <fstream>
 #include <iostream>
 
-#if !defined (WIN32)
+#if !defined (WIN32) && !defined (__APPLE__)
 #include <parallel/algorithm>
 #endif
 
@@ -72,7 +72,7 @@ void MergeTree::setupData() {
 
 void MergeTree::orderVertices() {
     Logger::log("ordering vertices");
-#if defined (WIN32)
+#if defined (WIN32) || defined (__APPLE__)
     std::sort(sv.begin(),sv.end(),Compare(data));
 #else
     __gnu_parallel::sort(sv.begin(),sv.end(),Compare(data));
