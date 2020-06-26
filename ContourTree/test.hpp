@@ -354,8 +354,10 @@ void generateData(bool mini = false) {
                     int in = xx + yy * dimx + zz * dimx * dimy;
                     if(mini) {
                         val = 255 - val;
+                        volume[in] = std::min(uint8_t(val),volume[in]);
+                    } else {
+                        volume[in] = std::max(uint8_t(val),volume[in]);
                     }
-                    volume[in] = std::max(uint8_t(val),volume[in]);
                 }
             }
         }
